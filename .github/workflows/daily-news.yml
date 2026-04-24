@@ -3,7 +3,7 @@ name: Daily AI News
 on:
   workflow_dispatch:   # 手動実行ボタン
   schedule:
-    - cron: '30 22 * * *'  # 毎日 07:30 JST
+    - cron: '0 21 * * *'   # 毎日 06:00 JST
 
 permissions:
   contents: read
