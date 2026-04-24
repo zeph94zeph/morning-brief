@@ -6,9 +6,10 @@ import { settings } from "../settings.js";
 const mockConfig: Config = {
   JINA_API_KEY: "test-jina",
   GEMINI_API_KEY: "test-gemini",
-  SLACK_BOT_TOKEN: "xoxb-test",
-  SLACK_CHANNEL: "C123",
+  LINE_CHANNEL_ACCESS_TOKEN: "test-token",
+  LINE_USER_ID: "U123",
   USE_SAMPLE_DATA: true,
+  USE_RSS: false,
 };
 
 describe("fetchHomeTimeline (モックルート)", () => {

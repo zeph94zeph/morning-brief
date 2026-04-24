@@ -12,6 +12,10 @@ export async function fetchHomeTimeline(
   if (config.USE_SAMPLE_DATA) {
     return loadSampleTweets();
   }
+  if (config.USE_RSS) {
+    // RSS ルートのときはこの関数は呼ばれないが型の網羅性のため
+    return [];
+  }
   return fetchFromX(config, settings);
 }
 
@@ -21,7 +25,7 @@ async function loadSampleTweets(): Promise<RawTweet[]> {
   return JSON.parse(raw) as RawTweet[];
 }
 
-type RealConfig = Extract<Config, { USE_SAMPLE_DATA: false }>;
+type RealConfig = Extract<Config, { USE_SAMPLE_DATA: false; USE_RSS: false }>;
 
 async function fetchFromX(
   config: RealConfig,
@@ -114,5 +118,4 @@ function sleep(ms: number): Promise<void> {
 // twitter-api-v2 の型定義には note_tweet が含まれないため unknown 経由でアクセス
 function getNoteText(tweet: unknown): string | undefined {
   const obj = tweet as { note_tweet?: { text?: string } };
-  return obj.note_tweet?.text;
-}
+  return obj.note_tweet?.text;}

@@ -15,8 +15,8 @@ describe("loadConfig", () => {
   const commonEnv = {
     JINA_API_KEY: "test",
     GEMINI_API_KEY: "test",
-    SLACK_BOT_TOKEN: "xoxb-test",
-    SLACK_CHANNEL: "C123",
+    LINE_CHANNEL_ACCESS_TOKEN: "test-token",
+    LINE_USER_ID: "U123",
   };
 
   it("正常な環境変数をパースできる", () => {
@@ -83,7 +83,7 @@ describe("loadConfig", () => {
     };
     const config = loadConfig();
     expect(config.USE_SAMPLE_DATA).toBe(false);
-    if (!config.USE_SAMPLE_DATA) {
+    if (!config.USE_SAMPLE_DATA && !config.USE_RSS) {
       expect(config.X_CONSUMER_KEY).toBe("ck");
     }
   });

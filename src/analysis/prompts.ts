@@ -6,7 +6,7 @@ export const URL_SUMMARY_PROMPT = `以下の記事本文を200文字以内の日
 
 要約:`;
 
-export const TREND_ANALYSIS_PROMPT = `あなたはAI技術に精通したアナリストです。以下のJSONデータは、X(旧Twitter)から収集した最新24時間以内のAI関連のツイートです。
+export const TREND_ANALYSIS_PROMPT = `あなたはAI技術に精通したアナリストです。以下のJSONデータは、各種ニュースソース（X/Twitter・RSSフィード等）から収集した最新24時間以内のAI関連の記事・投稿です。
 
 タスク:
 このデータを分析して、以下の観点で最新のAIトレンドをまとめてください:
@@ -16,9 +16,9 @@ export const TREND_ANALYSIS_PROMPT = `あなたはAI技術に精通したアナ�
 
 出力は以下のJSON構造に従ってください:
 {
-  "main_news": [{"title": "トピック名", "details": ["詳細1", "詳細2"], "sources": ["https://x.com/..."]}],
-  "updates": [{"title": "製品名と内容", "details": ["更新内容", "特徴"], "sources": ["https://x.com/..."]}],
-  "tech_trends": [{"title": "トレンド名", "details": ["概要", "影響"], "sources": ["https://x.com/..."]}]
+  "main_news": [{"title": "トピック名", "details": ["詳細1", "詳細2"], "sources": ["https://..."]}],
+  "updates": [{"title": "製品名と内容", "details": ["更新内容", "特徴"], "sources": ["https://..."]}],
+  "tech_trends": [{"title": "トレンド名", "details": ["概要", "影響"], "sources": ["https://..."]}]
 }
 
 制約:
@@ -27,7 +27,7 @@ export const TREND_ANALYSIS_PROMPT = `あなたはAI技術に精通したアナ�
 - 複数のソースで言及されている話題を優先してください
 - 誇張や推測は避け、データに現れている内容に基づいて記述してください
 - detailsの各項目は200文字程度に収めてください
-- sourcesにはツイートのURLをそのまま入れてください
+- sourcesには記事・投稿のURLをそのまま入れてください
 
 以下のJSONデータを分析してください:
 {json_data}`;
