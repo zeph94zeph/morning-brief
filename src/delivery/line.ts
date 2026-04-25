@@ -57,16 +57,12 @@ function buildMessages(analysis: Analysis): Array<{ type: string; text: string }
     lines.push(section.title);
     lines.push("─────────────────");
 
-    for (const topic of section.items) {
+    for (const topic of section.items.slice(0, 1)) {
       lines.push("");
       lines.push(`■ ${topic.title}`);
 
       for (const detail of topic.details) {
         lines.push(`  ${detail}`);
-      }
-
-      if (topic.sources.length > 0) {
-        lines.push(`  🔗 ${topic.sources[0]}`);
       }
     }
   }
