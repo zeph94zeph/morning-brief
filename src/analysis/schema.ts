@@ -1,21 +1,20 @@
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-const TopicSchema = z.object({
-  title: z.string(),
-  details: z.array(z.string()).max(3),
-  sources: z.array(z.string()),
+const NewsItemSchema = z.object({
+    title: z.string(),
+    details: z.array(z.string()).max(2),
+    sources: z.array(z.string()),
 });
 
 export const AnalysisSchema = z.object({
-  main_news: z.array(TopicSchema),
-  updates: z.array(TopicSchema),
-  tech_trends: z.array(TopicSchema),
+    political_economic_news: z.array(NewsItemSchema).max(3),
+    world_news: z.array(NewsItemSchema).max(3),
 });
 
 export type Analysis = z.infer<typeof AnalysisSchema>;
 
 export const analysisResponseSchema = zodToJsonSchema(AnalysisSchema, {
-  target: "openApi3",
-  $refStrategy: "none",
+    target: "openApi3",
+    $refStrategy: "none",
 });
