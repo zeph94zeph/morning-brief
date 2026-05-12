@@ -47,6 +47,14 @@ export const settings: Settings = {
   },
   rss: {
     feeds: [
+            // ── 日本の政治・経済 ─────────────────────────────────
+      { name: "NHK 政治",       url: "https://www3.nhk.or.jp/rss/news/cat04.xml" },
+      { name: "NHK 経済",       url: "https://www3.nhk.or.jp/rss/news/cat05.xml" },
+      { name: "東洋経済",        url: "https://toyokeizai.net/list/feed/rss" },
+            // ── 世界のニュース ────────────────────────────────
+      { name: "BBC Japan",        url: "https://feeds.bbci.co.uk/japanese/rss.xml" },
+      { name: "Reuters Japan",    url: "https://feeds.reuters.com/reuters/JPGeneralNews" },
+      { name: "CNN Japan",        url: "https://feeds.cnn.co.jp/cnn/rss" },
       // ── AI 専門メディア ──────────────────────────────────────
       { name: "TechCrunch AI",    url: "https://techcrunch.com/category/artificial-intelligence/feed/" },
       { name: "VentureBeat AI",   url: "https://venturebeat.com/category/ai/feed/" },
@@ -56,9 +64,7 @@ export const settings: Settings = {
       { name: "Google AI Blog",   url: "https://blog.research.google/feeds/posts/default?alt=rss" },
       { name: "Hugging Face",     url: "https://huggingface.co/blog/feed.xml" },
       { name: "Anthropic",        url: "https://www.anthropic.com/rss.xml" },
-      // ── コミュニティ・論文 ───────────────────────────────────
-      { name: "Hacker News",      url: "https://news.ycombinator.com/rss" },
-      { name: "arXiv cs.AI",      url: "https://rss.arxiv.org/rss/cs.AI" },
     ],
   },
+  
 };
