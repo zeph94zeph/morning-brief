@@ -2,7 +2,7 @@ import type { Config } from "../config.js";
 import type { Analysis } from "../analysis/schema.js";
 import { UserFacingError } from "../utils/errors.js";
 
-const LINE_API_URL = "https://api.line.me/v2/bot/message/push";
+const LINE_API_URL = "https://api.line.me/v2/bot/message/broadcast";
 
 export async function postToLine(
     analysis: Analysis,
@@ -10,37 +10,27 @@ export async function postToLine(
   ): Promise<void> {
     const messages = buildMessages(analysis);
 
-  const userIds = [
-        config.LINE_USER_ID,
-        ...(config.LINE_USER_ID_2 ? [config.LINE_USER_ID_2] : []),
-      ];
+  for (const message of messages) {
+        const res = await fetch(LINE_API_URL, {
+                  method: "POST",
+                  headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${config.LINE_CHANNEL_ACCESS_TOKEN}`,
+                  },
+                  body: JSON.stringify({ messages: [message] }),
+        });
 
-  for (const userId of userIds) {
-        for (const message of messages) {
-                const res = await fetch(LINE_API_URL, {
-                          method: "POST",
-                          headers: {
-                                      "Content-Type": "application/json",
-                                      Authorization: `Bearer ${config.LINE_CHANNEL_ACCESS_TOKEN}`,
-                          },
-                          body: JSON.stringify({
-                                      to: userId,
-                                      messages: [message],
-                          }),
-                });
-
-          if (!res.ok) {
-                    const body = await res.text();
-                    throw new UserFacingError(
-                                `LINE への投稿に失敗しました (HTTP ${res.status})。` +
-                                  `LINE_CHANNEL_ACCESS_TOKEN と LINE_USER_ID を確認してください。`,
-                      { cause: body },
-                              );
-          }
+        if (!res.ok) {
+                  const body = await res.text();
+                  throw new UserFacingError(
+                              `LINE への投稿に失敗しました (HTTP ${res.status})。` +
+                                `LINE_CHANNEL_ACCESS_TOKEN を確認してください。`,
+                    { cause: body },
+                            );
         }
   }
 
-  console.info(`LINE 投稿完了 (${userIds.length}人)`);
+  console.info("LINE broadcast 完了");
 }
 
 function stripUrls(text: string): string {
