@@ -9,6 +9,7 @@ const baseSchema = z.object({
   GEMINI_API_KEY: z.string().min(1),
   LINE_CHANNEL_ACCESS_TOKEN: z.string().min(1),
   LINE_USER_ID: z.string().min(1),
+  LINE_USER_ID_2: z.string().optional(),
   USE_SAMPLE_DATA: z
     .enum(["true", "false", ""])
     .default("false")
