@@ -48,18 +48,19 @@ function stripUrls(text: string): string {
 }
 
 function buildMessages(analysis: Analysis): Array<{ type: string; text: string }> {
-    const today = new Date().toLocaleDateString("ja-JP", {
+    const today = new Date().toLocaleDateString("ja-JP", h{
           year: "numeric", month: "long", day: "numeric", weekday: "short",
     });
 
   const lines: string[] = [];
-    lines.push(`📰 本日の重大ニュース3選`);
+        lines.push(`📰 本日のモーニングブリーフ`);
     lines.push(`${today}`);
     lines.push("─────────────────");
 
   const sections: Array<{ title: string; items: Analysis["political_economic_news"] }> = [
     { title: "💴 日本の政治・経済",       items: analysis.political_economic_news },
     { title: "🌏 世界のニュース",         items: analysis.world_news },
+      { title: "🤖 AIニュース",      items: analysis.ai_news },
       ];
 
   for (const section of sections) {
