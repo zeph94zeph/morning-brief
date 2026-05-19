@@ -38,41 +38,37 @@ function stripUrls(text: string): string {
 }
 
 function buildMessages(analysis: Analysis): Array<{ type: string; text: string }> {
-    const today = new Date().toLocaleDateString("ja-JP", {
-          year: "numeric", month: "long", day: "numeric", weekday: "short",
-    });
+  const today = new Date().toLocaleDateString("ja-JP", {
+    year: "numeric", month: "long", day: "numeric", weekday: "short",
+  });
 
   const lines: string[] = [];
-        lines.push(`📰 本日のモーニングブリーフ`);
-    lines.push(`${today}`);
-    lines.push("─────────────────");
+  lines.push(`本日のモーニングブリーフ。${today}。`);
 
   const sections: Array<{ title: string; items: Analysis["political_economic_news"] }> = [
-    { title: "💴 日本の政治・経済",       items: analysis.political_economic_news },
-    { title: "🌏 世界のニュース",         items: analysis.world_news },
-      { title: "🤖 AIニュース",      items: analysis.ai_news },
-      ];
+    { title: "日本の政治・経済",  items: analysis.political_economic_news },
+    { title: "世界のニュース",    items: analysis.world_news },
+    { title: "AIニュース",        items: analysis.ai_news },
+  ];
 
   for (const section of sections) {
-        if (section.items.length === 0) continue;
+    if (section.items.length === 0) continue;
 
+    lines.push("");
+    lines.push(`${section.title}。`);
+
+    section.items.forEach((item, i) => {
       lines.push("");
-        lines.push(section.title);
-        lines.push("─────────────────");
-
-      section.items.forEach((item, i) => {
-              lines.push("");
-              lines.push(`${i + 1}. ${item.title}`);
-
-                                  for (const detail of item.details) {
-                                            const clean = stripUrls(detail);
-                                            if (clean) lines.push(`  ${clean}`);
-                                  }
-      });
+      lines.push(`${i + 1}、${item.title}。`);
+      for (const detail of item.details) {
+        const clean = stripUrls(detail);
+        if (clean) lines.push(clean);
+      }
+    });
   }
 
   const fullText = lines.join("\n");
-    const chunks = splitText(fullText, 4900);
+  const chunks = splitText(fullText, 4900);
 
   return chunks.map(chunk => ({ type: "text", text: chunk }));
 }
