@@ -40,6 +40,7 @@ function stripUrls(text: string): string {
 function buildMessages(analysis: Analysis): Array<{ type: string; text: string }> {
   const today = new Date().toLocaleDateString("ja-JP", {
     year: "numeric", month: "long", day: "numeric", weekday: "short",
+    timeZone: "Asia/Tokyo",
   });
 
   const lines: string[] = [];
