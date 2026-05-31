@@ -3,7 +3,7 @@ name: Morning Brief
 on:
   workflow_dispatch:   # 手動実行ボタン
   schedule:
-    - cron: '0 20 * * *'   # 毎日 05:00 JST（遅延込みで06:00前後に届く）
+    - cron: '0 19 * * *'   # 毎日 04:00 JST（遅延込みで05:00前後に届く）
 
 permissions:
   contents: read
