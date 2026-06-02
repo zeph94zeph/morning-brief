@@ -34,15 +34,17 @@ export async function analyzeTrends(
     JSON.stringify(tweetsForPrompt, null, 2),
   );
 
-  const res = await ai.models.generateContent({
-    model: settings.analysis.trendAnalysisModel,
-    contents: prompt,
-    config: {
-      temperature: settings.analysis.temperature,
-      responseMimeType: "application/json",
-      responseSchema: analysisResponseSchema as Record<string, unknown>,
-    },
-  });
+  const res = await retryOnTransient(() =>
+    ai.models.generateContent({
+      model: settings.analysis.trendAnalysisModel,
+      contents: prompt,
+      config: {
+        temperature: settings.analysis.temperature,
+        responseMimeType: "application/json",
+        responseSchema: analysisResponseSchema as Record<string, unknown>,
+      },
+    }),
+  );
 
   const candidate = (res as { candidates?: Array<{ finishReason?: string }> })
     .candidates?.[0];
@@ -66,6 +68,26 @@ export async function analyzeTrends(
       { cause },
     );
   }
+}
+
+/** 503 / 429 など一時的エラーは最大3回リトライする */
+async function retryOnTransient<T>(fn: () => Promise<T>): Promise<T> {
+  const retryableStatuses = new Set([429, 503]);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      if (retryableStatuses.has(status ?? 0) && attempt < 3) {
+        const waitMs = attempt * 30_000; // 30s, 60s
+        console.warn(`[Gemini] ${status} エラー。${waitMs / 1000}秒後にリトライ (${attempt}/3)...`);
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("unreachable");
 }
 
 function groupByAuthor(
