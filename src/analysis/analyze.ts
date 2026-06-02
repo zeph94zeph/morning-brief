@@ -34,15 +34,17 @@ export async function analyzeTrends(
     JSON.stringify(tweetsForPrompt, null, 2),
   );
 
-  const res = await ai.models.generateContent({
-    model: settings.analysis.trendAnalysisModel,
-    contents: prompt,
-    config: {
-      temperature: settings.analysis.temperature,
-      responseMimeType: "application/json",
-      responseSchema: analysisResponseSchema as Record<string, unknown>,
-    },
-  });
+  const res = await retryOnTransient(() =>
+    ai.models.generateContent({
+      model: settings.analysis.trendAnalysisModel,
+      contents: prompt,
+      config: {
+        temperature: settings.analysis.temperature,
+        responseMimeType: "application/json",
+        responseSchema: analysisResponseSchema as Record<string, unknown>,
+      },
+    }),
+  );
 
   const candidate = (res as { candidates?: Array<{ finishReason?: string }> })
     .candidates?.[0];
@@ -66,6 +68,22 @@ export async function analyzeTrends(
       { cause },
     );
   }
+}
+
+async function retryOnTransient<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      const isTransient = status === 503 || status === 429;
+      if (!isTransient || attempt === maxAttempts) throw err;
+      const waitMs = 2000 * 2 ** (attempt - 1);
+      console.warn(`[Gemini] ${status} — ${attempt}回目失敗。${waitMs / 1000}秒後にリトライ...`);
+      await new Promise((r) => setTimeout(r, waitMs));
+    }
+  }
+  throw new Error("unreachable");
 }
 
 function groupByAuthor(
