@@ -34,16 +34,19 @@ export async function analyzeTrends(
     JSON.stringify(tweetsForPrompt, null, 2),
   );
 
-  const res = await retryOnTransient(() =>
-    ai.models.generateContent({
-      model: settings.analysis.trendAnalysisModel,
-      contents: prompt,
-      config: {
-        temperature: settings.analysis.temperature,
-        responseMimeType: "application/json",
-        responseSchema: analysisResponseSchema as Record<string, unknown>,
-      },
-    }),
+  const res = await retryOnTransient(
+    () =>
+      ai.models.generateContent({
+        model: settings.analysis.trendAnalysisModel,
+        contents: prompt,
+        config: {
+          temperature: settings.analysis.temperature,
+          responseMimeType: "application/json",
+          responseSchema: analysisResponseSchema as Record<string, unknown>,
+        },
+      }),
+    settings.analysis.maxGeminiAttempts,
+    settings.analysis.geminiRetryDelayMs,
   );
 
   const candidate = (res as { candidates?: Array<{ finishReason?: string }> })
@@ -70,17 +73,23 @@ export async function analyzeTrends(
   }
 }
 
-/** 503 / 429 など一時的エラーは最大3回リトライする */
-async function retryOnTransient<T>(fn: () => Promise<T>): Promise<T> {
+/** 503 / 429 など一時的エラーは最大6回まで試行する */
+async function retryOnTransient<T>(
+  fn: () => Promise<T>,
+  maxAttempts: number,
+  retryDelayMs: number,
+): Promise<T> {
   const retryableStatuses = new Set([429, 503]);
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (err) {
       const status = (err as { status?: number }).status;
-      if (retryableStatuses.has(status ?? 0) && attempt < 3) {
-        const waitMs = attempt * 30_000; // 30s, 60s
-        console.warn(`[Gemini] ${status} エラー。${waitMs / 1000}秒後にリトライ (${attempt}/3)...`);
+      if (retryableStatuses.has(status ?? 0) && attempt < maxAttempts) {
+        const waitMs = attempt * retryDelayMs;
+        console.warn(
+          `[Gemini] ${status} エラー。${waitMs / 1000}秒後にリトライ (${attempt}/${maxAttempts})...`,
+        );
         await new Promise((r) => setTimeout(r, waitMs));
         continue;
       }

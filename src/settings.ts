@@ -21,6 +21,8 @@ export interface Settings {
     urlSummaryModel: string;
     trendAnalysisModel: string;
     temperature: number;
+    maxGeminiAttempts: number;
+    geminiRetryDelayMs: number;
   };
   /** USE_RSS=true のときに使うフィード一覧。自由に追加・削除できる */
   rss: {
@@ -44,6 +46,8 @@ export const settings: Settings = {
     urlSummaryModel: "gemini-2.5-flash",
     trendAnalysisModel: "gemini-2.5-flash",
     temperature: 0,
+    maxGeminiAttempts: 6,
+    geminiRetryDelayMs: 30_000,
   },
   rss: {
     feeds: [

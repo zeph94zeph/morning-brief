@@ -26,6 +26,8 @@ const baseSettings: Settings = {
     urlSummaryModel: "gemini-2.5-flash",
     trendAnalysisModel: "gemini-2.5-pro",
     temperature: 0,
+    maxGeminiAttempts: 6,
+    geminiRetryDelayMs: 30_000,
   },
   rss: { feeds: [] },
 };

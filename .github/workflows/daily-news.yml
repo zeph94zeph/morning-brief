@@ -3,7 +3,7 @@ name: Morning Brief
 on:
   workflow_dispatch:   # 手動実行ボタン
   schedule:
-    - cron: '0 19 * * *'   # 毎日 04:00 JST（遅延込みで05:00前後に届く）
+    - cron: '37 18 * * *'  # 毎日 03:37 JST（遅延込みで05:00前後に届く）
 
 permissions:
   contents: read
@@ -15,7 +15,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 

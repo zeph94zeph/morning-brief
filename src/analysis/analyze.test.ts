@@ -38,6 +38,8 @@ const mockSettings: Settings = {
     urlSummaryModel: "gemini-2.5-flash",
     trendAnalysisModel: "gemini-2.5-pro",
     temperature: 0,
+    maxGeminiAttempts: 6,
+    geminiRetryDelayMs: 30_000,
   },
   rss: { feeds: [] },
 };
@@ -87,5 +89,33 @@ describe("analyzeTrends", () => {
     await expect(
       analyzeTrends(sampleTweets, mockConfig, mockSettings),
     ).rejects.toThrow(UserFacingError);
+  });
+
+  it("retries 503 according to settings", async () => {
+    vi.useFakeTimers();
+    const retrySettings: Settings = {
+      ...mockSettings,
+      analysis: {
+        ...mockSettings.analysis,
+        maxGeminiAttempts: 3,
+        geminiRetryDelayMs: 10,
+      },
+    };
+
+    mockGenerateContent
+      .mockRejectedValueOnce(Object.assign(new Error("busy"), { status: 503 }))
+      .mockRejectedValueOnce(Object.assign(new Error("busy"), { status: 503 }))
+      .mockResolvedValueOnce({
+        text: JSON.stringify(validResponse),
+        candidates: [{ finishReason: "STOP" }],
+      });
+
+    const resultPromise = analyzeTrends(sampleTweets, mockConfig, retrySettings);
+    await vi.advanceTimersByTimeAsync(10);
+    await vi.advanceTimersByTimeAsync(20);
+
+    await expect(resultPromise).resolves.toEqual(validResponse);
+    expect(mockGenerateContent).toHaveBeenCalledTimes(3);
+    vi.useRealTimers();
   });
 });
