@@ -12,6 +12,7 @@ import { fetchRssFeeds } from "./sources/rss-feeds.js";
 import { fetchUrlContents } from "./sources/url-content.js";
 import { summarizeUrls } from "./analysis/url-summarizer.js";
 import { analyzeTrends } from "./analysis/analyze.js";
+import { buildFallbackAnalysis } from "./analysis/fallback.js";
 import { postToLine } from "./delivery/line.js";
 import { UserFacingError } from "./utils/errors.js";
 
@@ -38,7 +39,15 @@ async function main() {
     config,
     settings,
   );
-  const analysis = await analyzeTrends(enrichedTweets, config, settings);
+  const analysis = await analyzeTrends(enrichedTweets, config, settings).catch(
+    (error: unknown) => {
+      console.warn(
+        "[Gemini] 分析に失敗したため、RSS記事ベースの簡易版を配信します。",
+      );
+      console.warn("[Gemini] fallback reason:", error);
+      return buildFallbackAnalysis(enrichedTweets);
+    },
+  );
 
   console.info("[4/4] LINE へ投稿中...");
   await postToLine(analysis, config);
