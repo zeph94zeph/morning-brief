@@ -5,6 +5,14 @@ export interface RssFeed {
   url: string;
 }
 
+export interface ToolAdvisorSettings {
+  enabled: boolean;
+  maxRecommendations: number;
+  watchedTools: string[];
+  discovery: { enabled: boolean; description: string };
+  userProfile: { primaryUseCases: string[]; constraints: string[] };
+}
+
 export interface Settings {
   schedule: {
     lookbackHours: number;
@@ -28,6 +36,7 @@ export interface Settings {
   rss: {
     feeds: RssFeed[];
   };
+  toolAdvisor: ToolAdvisorSettings;
 }
 
 export const settings: Settings = {
@@ -48,6 +57,40 @@ export const settings: Settings = {
     temperature: 0,
     maxGeminiAttempts: 6,
     geminiRetryDelayMs: 30_000,
+  },
+  toolAdvisor: {
+    enabled: true,
+    maxRecommendations: 5,
+    watchedTools: [
+      "Codex",
+      "Claude Code",
+      "Gemini",
+      "Antigravity",
+      "Gemini SPARK",
+      "Cursor",
+      "GitHub Copilot",
+      "Perplexity",
+      "Grok / X AI",
+    ],
+    discovery: {
+      enabled: true,
+      description: "業務自動化・コード修正・資料作成・AIニュース収集に役立つ新しいAIツールや重要アップデートを拾う",
+    },
+    userProfile: {
+      primaryUseCases: [
+        "コード修正",
+        "GitHub Actions修復",
+        "業務自動化",
+        "AIニュース収集",
+        "LINE/Slack配信",
+        "資料作成",
+      ],
+      constraints: [
+        "日本語で判断したい",
+        "安定性重視",
+        "無料枠優先。ただし重要用途では有料化も検討",
+      ],
+    },
   },
   rss: {
     feeds: [

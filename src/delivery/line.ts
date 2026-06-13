@@ -68,6 +68,29 @@ function buildMessages(analysis: Analysis): Array<{ type: string; text: string }
     });
   }
 
+  const watched = analysis.tool_recommendations.filter(r => r.category === "watched");
+  const discovered = analysis.tool_recommendations.filter(r => r.category === "discovered");
+
+  if (watched.length > 0) {
+    lines.push("");
+    lines.push("本日のツール選定。");
+    watched.forEach((r, i) => {
+      lines.push("");
+      lines.push(`${i + 1}、${r.tool}。${r.verdict}。`);
+      lines.push(r.reason);
+    });
+  }
+
+  if (discovered.length > 0) {
+    lines.push("");
+    lines.push("新規発見。");
+    discovered.forEach((r, i) => {
+      lines.push("");
+      lines.push(`${i + 1}、${r.tool}。`);
+      lines.push(r.reason);
+    });
+  }
+
   const fullText = lines.join("\n");
   const chunks = splitText(fullText, 4900);
 

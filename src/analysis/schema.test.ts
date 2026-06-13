@@ -86,7 +86,7 @@ describe("analysisResponseSchema", () => {
     expect(typeof analysisResponseSchema).toBe("object");
   });
 
-  it("3つのセクションプロパティを含む", () => {
+  it("4つのセクションプロパティを含む", () => {
     const schema = analysisResponseSchema as Record<string, unknown>;
     const props = (schema as { properties?: Record<string, unknown> })
       .properties;
@@ -94,5 +94,6 @@ describe("analysisResponseSchema", () => {
     expect(props).toHaveProperty("political_economic_news");
     expect(props).toHaveProperty("world_news");
     expect(props).toHaveProperty("ai_news");
+    expect(props).toHaveProperty("tool_recommendations");
   });
 });

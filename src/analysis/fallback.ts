@@ -18,6 +18,7 @@ export function buildFallbackAnalysis(tweets: EnrichedTweet[]): Analysis {
     political_economic_news: [],
     world_news: [],
     ai_news: [],
+    tool_recommendations: [],
   };
 
   for (const tweet of tweets) {

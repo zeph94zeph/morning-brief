@@ -42,6 +42,13 @@ const mockSettings: Settings = {
     geminiRetryDelayMs: 30_000,
   },
   rss: { feeds: [] },
+  toolAdvisor: {
+    enabled: false,
+    maxRecommendations: 5,
+    watchedTools: [],
+    discovery: { enabled: false, description: "" },
+    userProfile: { primaryUseCases: [], constraints: [] },
+  },
 };
 
 const sampleTweets: EnrichedTweet[] = [
@@ -64,6 +71,7 @@ const validResponse = {
   ],
   world_news: [],
   ai_news: [{ title: "GPT新モデル発表", details: ["性能大幅向上"], sources: [] }],
+  tool_recommendations: [],
 };
 
 describe("analyzeTrends", () => {

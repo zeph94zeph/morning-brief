@@ -30,6 +30,13 @@ const baseSettings: Settings = {
     geminiRetryDelayMs: 30_000,
   },
   rss: { feeds: [] },
+  toolAdvisor: {
+    enabled: false,
+    maxRecommendations: 5,
+    watchedTools: [],
+    discovery: { enabled: false, description: "" },
+    userProfile: { primaryUseCases: [], constraints: [] },
+  },
 };
 
 const disabledSettings: Settings = {

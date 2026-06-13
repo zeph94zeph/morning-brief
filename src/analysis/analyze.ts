@@ -6,7 +6,7 @@ import {
 } from "./schema.js";
 import { TREND_ANALYSIS_PROMPT } from "./prompts.js";
 import type { Config } from "../config.js";
-import type { Settings } from "../settings.js";
+import type { Settings, ToolAdvisorSettings } from "../settings.js";
 import type { EnrichedTweet } from "../types.js";
 import { UserFacingError } from "../utils/errors.js";
 import { cleanText } from "../utils/post-optimizer.js";
@@ -29,10 +29,10 @@ export async function analyzeTrends(
     }),
   );
 
-  const prompt = TREND_ANALYSIS_PROMPT.replace(
-    "{json_data}",
-    JSON.stringify(tweetsForPrompt, null, 2),
-  );
+  const toolAdvisorContext = buildToolAdvisorContext(settings.toolAdvisor);
+  const prompt = TREND_ANALYSIS_PROMPT
+    .replace("{json_data}", JSON.stringify(tweetsForPrompt, null, 2))
+    .replace("{tool_advisor_context}", toolAdvisorContext);
 
   const res = await retryOnTransient(
     () =>
@@ -97,6 +97,19 @@ async function retryOnTransient<T>(
     }
   }
   throw new Error("unreachable");
+}
+
+function buildToolAdvisorContext(advisor: ToolAdvisorSettings): string {
+  if (!advisor.enabled) {
+    return "AIツール判断は無効。tool_recommendations は空配列 [] にすること。";
+  }
+  return [
+    `固定ウォッチ対象: ${advisor.watchedTools.join(", ")}`,
+    `発見枠: ${advisor.discovery.enabled ? advisor.discovery.description : "無効"}`,
+    `最大件数: ${advisor.maxRecommendations}件`,
+    `ユーザー用途: ${advisor.userProfile.primaryUseCases.join(", ")}`,
+    `制約: ${advisor.userProfile.constraints.join(", ")}`,
+  ].join("\n");
 }
 
 function groupByAuthor(

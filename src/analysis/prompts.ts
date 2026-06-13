@@ -22,17 +22,28 @@ export const TREND_ANALYSIS_PROMPT = `あなたは日本語で情報を届ける
 出力は以下のJSON構造に従ってください:
 {
   "political_economic_news": [{"title": "見出し", "details": ["詳細1", "詳細2"], "sources": ["https://..."]}],
-    "world_news": [{"title": "見出し", "details": ["詳細1", "詳細2"], "sources": ["https://..."]}],
-      "ai_news": [{"title": "見出し", "details": ["詳細1", "詳細2"], "sources": ["https://..."]}]
-      }
+  "world_news": [{"title": "見出し", "details": ["詳細1", "詳細2"], "sources": ["https://..."]}],
+  "ai_news": [{"title": "見出し", "details": ["詳細1", "詳細2"], "sources": ["https://..."]}],
+  "tool_recommendations": [{"tool": "ツール名", "verdict": "推奨", "reason": "理由（80文字以内）", "sources": ["https://..."], "category": "watched"}]
+}
 
-      制約:
-      - 各カテゴリ必ず3件選ぶこと
-      - titleは読んだだけで内容がわかるように具体的に書くこと（例：「政府が〇〇を発表」）
-      - detailsは各項目150文字程度で事実を簡潔に
-      - 誇張・推測は避け、データに基づいた内容のみ記述すること
-      - detailsの中にURLを含めないこと（URLはsourcesフィールドのみに入れること）
-      - sourcesには記事のURLをそのまま入れること
+制約:
+- 各ニュースカテゴリ必ず3件選ぶこと
+- titleは読んだだけで内容がわかるように具体的に書くこと（例：「政府が〇〇を発表」）
+- detailsは各項目150文字程度で事実を簡潔に
+- 誇張・推測は避け、データに基づいた内容のみ記述すること
+- detailsの中にURLを含めないこと（URLはsourcesフィールドのみに入れること）
+- sourcesには記事のURLをそのまま入れること
 
-      以下のJSONデータを分析してください:
-      {json_data}`;
+【AIツール判断の追加タスク】
+{tool_advisor_context}
+
+tool_recommendations の制約:
+- 今日のRSSデータに関連ニュースがあるツールのみ出力。なければ空配列 []
+- verdict は "推奨" / "保留" / "注視" の3択のみ
+- reason は80文字以内で日本語の体言止め
+- category: "watched"=固定ウォッチ対象, "discovered"=発見枠（固定対象以外の新規ツール）
+- "Gemini SPARK" は Apache Spark やメールアプリではなく Google の Gemini SPARK / Google Gemini Spark を指す
+
+以下のJSONデータを分析してください:
+{json_data}`;
