@@ -1,6 +1,8 @@
-# AIニュース
+# AIニュース（Morning Brief）
 
-Xのホームタイムラインから24時間以内のAI関連ニュースを収集し、Geminiで分析してSlackに投稿する自動配信ツール。
+RSSフィード（既定）またはXのホームタイムラインから24時間以内のニュースを収集し、
+Geminiで分析してLINEに配信する自動配信ツール。
+GitHub Actions で毎朝 03:37 JST に実行される（`.github/workflows/daily-news.yml`）。
 
 ## プロジェクト構造
 
@@ -11,15 +13,18 @@ src/
 ├── config.ts            # 環境変数の zod 検証
 ├── types.ts             # 共通型定義
 ├── sources/
+│   ├── rss-feeds.ts     # RSS/Atom 並列取得（USE_RSS=true のとき使う既定ルート）
 │   ├── x-timeline.ts    # X API タイムライン取得 + モックルート分岐
 │   └── url-content.ts   # Jina Reader で URL 本文並列取得
 ├── analysis/
 │   ├── url-summarizer.ts # Gemini Flash で各URL要約
-│   ├── analyze.ts       # Gemini Pro で最終トレンド分析
+│   ├── analyze.ts       # Gemini で最終トレンド分析 + ツールアドバイザー
+│   ├── fallback.ts      # Gemini が落ちたときの記事ベース簡易分析
 │   ├── schema.ts        # zod スキーマ（SSoT）
 │   └── prompts.ts       # プロンプト2つ
 ├── delivery/
-│   └── slack.ts         # Block Kit 組み立て + Slack投稿
+│   ├── line.ts          # LINE Messaging API broadcast（現在の配信先）
+│   └── slack.ts         # 旧Slack配信。現在どこからも呼ばれていない
 └── utils/
     ├── chunk.ts         # 配列チャンク分割
     ├── errors.ts        # UserFacingError + assertSlackOk
@@ -29,33 +34,37 @@ src/
 ## 実行方法
 
 ```bash
-npm start                     # 通常実行
-USE_SAMPLE_DATA=true npm start # モックルート（X API 不要）
+USE_RSS=true npm start         # 通常実行（GitHub Actions と同じルート）
+USE_SAMPLE_DATA=true npm start # モックルート（X API / RSS 不要）
+npm start                      # X API ルート（X_* のシークレットが要る）
+npm test                       # vitest
+npm run typecheck              # tsc --noEmit
 ```
 
 ## 読む順番
 
 1. `src/main.ts` — 4ステップの全体像
-2. `src/sources/x-timeline.ts` — ソース元
+2. `src/sources/rss-feeds.ts` — ソース元（X ルートを見たいときは `x-timeline.ts`）
 3. `src/analysis/analyze.ts` — 処理
-4. `src/delivery/slack.ts` — 届ける先
+4. `src/delivery/line.ts` — 届ける先
 5. `src/settings.ts` — 設定を変えたいとき
 
 ## GitHub Secrets
 
+ワークフローは `USE_RSS=true` で走るため、X 系のシークレットは現在使っていない。
+
 | シークレット名 | 用途 |
 |---|---|
-| `X_CONSUMER_KEY` | X OAuth 1.0a consumer key（console.x.com 「コンシューマーキー」の API Key） |
-| `X_CONSUMER_SECRET` | X OAuth 1.0a consumer secret（同 API Key Secret） |
-| `X_ACCESS_TOKEN` | X OAuth 1.0a access token（console.x.com 「OAuth 1.0 キー」のアクセストークン） |
-| `X_ACCESS_TOKEN_SECRET` | X OAuth 1.0a access token secret（同 アクセストークンシークレット） |
-| `JINA_API_KEY` | Jina Reader |
-| `GEMINI_API_KEY` | Gemini Flash + Pro |
-| `SLACK_BOT_TOKEN` | Slack Bot（`chat:write` スコープ） |
-| `SLACK_CHANNEL` | 投稿先チャンネルID |
+| `JINA_API_KEY` | Jina Reader。**401 のときは鍵なしで引き直すので、失効しても本文取得は止まらない** |
+| `GEMINI_API_KEY` | Gemini（URL要約 + トレンド分析） |
+| `LINE_CHANNEL_ACCESS_TOKEN` | LINE Messaging API のチャネルアクセストークン |
+| `LINE_USER_ID` | 配信先ユーザーID（`LINE_USER_ID_2` は任意） |
+
+X API ルート（`USE_RSS=false` かつ `USE_SAMPLE_DATA=false`）に戻す場合のみ、
+`X_CONSUMER_KEY` / `X_CONSUMER_SECRET` / `X_ACCESS_TOKEN` / `X_ACCESS_TOKEN_SECRET` が追加で要る。
 
 ## 禁止事項
 
-- curl で直接 Slack API / X API を叩かない
+- curl で直接 LINE API / X API を叩かない
 - `src/settings.ts` 以外のファイルで設定値をハードコードしない
 - 受講生に見せたいエラー文言は `UserFacingError` の `message` に入れる（`main.ts` が `[USER-FACING]` プレフィックス付きで出力する）。`throw new Error(...)` だけだと `[INTERNAL]` 扱いになり、受講生が混乱する
