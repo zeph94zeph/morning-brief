@@ -40,7 +40,7 @@ export async function fetchUrlContents(
 
   if (urlMapping.size === 0) return contents;
 
-  let jina402Detected = false;
+  let jinaHaltReason: string | undefined;
   // 上限は除外後にかける。HEAD展開は無料なので、
   // 捨てられる permalink が Jina / Gemini の枠を食い潰さないようにする。
   const entries = [...urlMapping.entries()].slice(0, settings.urlContent.maxUrls);
@@ -52,7 +52,7 @@ export async function fetchUrlContents(
   const chunks = chunkArray(entries, settings.urlContent.parallelism);
 
   for (const chunk of chunks) {
-    if (jina402Detected) break;
+    if (jinaHaltReason) break;
 
     const results = await Promise.allSettled(
       chunk.map(async ([originalUrl, expandedUrl]) => {
@@ -72,11 +72,13 @@ export async function fetchUrlContents(
             signal: ctl.signal,
           });
 
-          if (res.status === 402 || res.status === 401) {
-            jina402Detected = true;
-            console.warn(
-              `[Jina] ${res.status} — 無料枠が枯渇しました。URL本文なしで分析を続行します。`,
-            );
+          // 401 は認証エラー、402 は枠切れ。どちらも残りを試す意味がないので中断する。
+          // 同じチャンクの並列分がまとめて刺さるので、最初の1件だけ記録する。
+          if (res.status === 401 || res.status === 402) {
+            jinaHaltReason ??=
+              res.status === 401
+                ? "401 — JINA_API_KEY が無効です。GitHub Secrets の JINA_API_KEY を確認してください。"
+                : "402 — 無料枠が枯渇しました。";
             return { originalUrl, content: undefined };
           }
           if (!res.ok) {
@@ -97,7 +99,8 @@ export async function fetchUrlContents(
     }
   }
 
-  if (jina402Detected) {
+  if (jinaHaltReason) {
+    console.warn(`[Jina] ${jinaHaltReason} URL本文なしで分析を続行します。`);
     console.warn(
       `[Jina] フォールバック: ${contents.size} URLs の本文を取得済み。残りはスキップします。`,
     );

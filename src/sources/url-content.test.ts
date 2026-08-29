@@ -142,6 +142,34 @@ describe("fetchUrlContents", () => {
     expect(result.has("https://example.com/news/3")).toBe(false);
   });
 
+  it("401 は認証エラーとして報告する（枠切れの402と区別する）", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (init?.method === "HEAD") {
+          return Promise.resolve({ url });
+        }
+        return Promise.resolve(new Response(null, { status: 401 }));
+      }),
+    );
+
+    const result = await fetchUrlContents(
+      makeRssItems("https://example.com/news/1", "https://example.com/news/2"),
+      mockConfig,
+      baseSettings,
+    );
+
+    expect(result.size).toBe(0);
+    const messages = warn.mock.calls.map((c) => String(c[0]));
+    expect(messages.some((m) => m.includes("JINA_API_KEY"))).toBe(true);
+    expect(messages.some((m) => m.includes("無料枠が枯渇"))).toBe(false);
+    // 並列分がまとめて刺さっても中断理由は1回だけ
+    expect(messages.filter((m) => m.includes("JINA_API_KEY"))).toHaveLength(1);
+    warn.mockRestore();
+  });
+
   it("除外される permalink は maxUrls の枠を消費しない", async () => {
     stubFetchOk("本文");
 
