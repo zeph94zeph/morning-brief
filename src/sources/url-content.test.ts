@@ -17,6 +17,7 @@ const baseSettings: Settings = {
   schedule: { lookbackHours: 24, maxTweets: 100 },
   urlContent: {
     enabled: true,
+    maxUrls: 50,
     timeoutMs: 5000,
     parallelism: 5,
     maxSummaryChars: 200,
@@ -53,6 +54,33 @@ const tweetsNoUrl: RawTweet[] = [
   },
 ];
 
+/** RSS ルートの形。記事URLは本文ではなく url フィールドに入る */
+function makeRssItems(...urls: string[]): RawTweet[] {
+  return urls.map((u, i) => ({
+    authorId: "NHK 経済",
+    text: `見出し${i + 1}\n本文にURLを含まない200字の抄録`,
+    createdAt: "2026-04-16T10:00:00.000Z",
+    url: u,
+  }));
+}
+
+/** HEAD はそのままのURLを返し、Jina は本文を返すだけの stub */
+function stubFetchOk(body = "Article body content") {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (init?.method === "HEAD") {
+        return Promise.resolve({ url });
+      }
+      if (url.startsWith("https://r.jina.ai/")) {
+        return Promise.resolve(new Response(body, { status: 200 }));
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    }),
+  );
+}
+
 function makeTweetsWithUrls(...urls: string[]): RawTweet[] {
   return urls.map((u, i) => ({
     authorId: "user1",
@@ -72,13 +100,60 @@ describe("fetchUrlContents", () => {
     expect(result.size).toBe(0);
   });
 
-  it("URLがないツイートでは空Mapを返す", async () => {
+  it("外部URLを持たないツイートでは空Mapを返す", async () => {
+    stubFetchOk();
     const result = await fetchUrlContents(
       tweetsNoUrl,
       mockConfig,
       baseSettings,
     );
+    // 本文にURLはなく、permalink は x.com なので expandUrls が除外する
     expect(result.size).toBe(0);
+  });
+
+  it("RSS記事は本文にURLがなくても url フィールドから本文を取得する", async () => {
+    stubFetchOk("RSS記事の本文");
+
+    const result = await fetchUrlContents(
+      makeRssItems("https://example.com/news/1", "https://example.com/news/2"),
+      mockConfig,
+      baseSettings,
+    );
+
+    expect(result.size).toBe(2);
+    expect(result.get("https://example.com/news/1")).toBe("RSS記事の本文");
+    expect(result.get("https://example.com/news/2")).toBe("RSS記事の本文");
+  });
+
+  it("maxUrls を超える分は取りに行かない", async () => {
+    stubFetchOk("RSS記事の本文");
+
+    const result = await fetchUrlContents(
+      makeRssItems(
+        "https://example.com/news/1",
+        "https://example.com/news/2",
+        "https://example.com/news/3",
+      ),
+      mockConfig,
+      { ...baseSettings, urlContent: { ...baseSettings.urlContent, maxUrls: 2 } },
+    );
+
+    expect(result.size).toBe(2);
+    expect(result.has("https://example.com/news/3")).toBe(false);
+  });
+
+  it("除外される permalink は maxUrls の枠を消費しない", async () => {
+    stubFetchOk("本文");
+
+    // 各ツイートは 外部URL1件 + x.com の permalink1件 を持つ
+    const result = await fetchUrlContents(
+      makeTweetsWithUrls("https://a.example.com/1", "https://b.example.com/2"),
+      mockConfig,
+      { ...baseSettings, urlContent: { ...baseSettings.urlContent, maxUrls: 2 } },
+    );
+
+    // permalink が枠を食っていれば1件しか取れない
+    expect(result.size).toBe(2);
   });
 
   it("Jina 200 OK で本文を取得できる", async () => {

@@ -29,6 +29,7 @@ const mockSettings: Settings = {
   schedule: { lookbackHours: 24, maxTweets: 100 },
   urlContent: {
     enabled: false,
+    maxUrls: 50,
     timeoutMs: 5000,
     parallelism: 5,
     maxSummaryChars: 200,

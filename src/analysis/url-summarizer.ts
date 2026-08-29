@@ -57,7 +57,10 @@ export async function summarizeUrls(
 
   return tweets.map((tweet) => {
     let enrichedText = buildFullText(tweet);
-    for (const url of extractUrls(tweet.text)) {
+    // fetchUrlContents と同じ集め方（本文中のURL + RawTweet.url）で引く。
+    // RSS 記事は本文にURLを持たないため tweet.url を見ないと要約が結び付かない。
+    const urls = new Set([...extractUrls(tweet.text), ...(tweet.url ? [tweet.url] : [])]);
+    for (const url of urls) {
       const summary = summaryCache.get(url);
       if (summary) {
         enrichedText += `\n[補足情報]: ${summary}`;

@@ -20,6 +20,8 @@ export interface Settings {
   };
   urlContent: {
     enabled: boolean;
+    /** 本文を取りに行く URL の上限。Jina / Gemini の無料枠を守るための安全弁 */
+    maxUrls: number;
     timeoutMs: number;
     parallelism: number;
     maxSummaryChars: number;
@@ -46,6 +48,7 @@ export const settings: Settings = {
   },
   urlContent: {
     enabled: true,
+    maxUrls: 12,
     timeoutMs: 10_000,
     parallelism: 10,
     maxSummaryChars: 200,
