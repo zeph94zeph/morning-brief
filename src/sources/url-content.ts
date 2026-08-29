@@ -41,6 +41,18 @@ export async function fetchUrlContents(
   if (urlMapping.size === 0) return contents;
 
   let jinaHaltReason: string | undefined;
+  // 401 が返った時点でその鍵は無効。Jina Reader は鍵なしでも動くので、
+  // 以降は Authorization を付けずに投げる（毎回1往復無駄にしないため）。
+  let authDisabled = false;
+
+  const callJina = (expandedUrl: string, withAuth: boolean, signal: AbortSignal) =>
+    fetch(`https://r.jina.ai/${expandedUrl}`, {
+      headers: {
+        Accept: "text/plain",
+        ...(withAuth ? { Authorization: `Bearer ${config.JINA_API_KEY}` } : {}),
+      },
+      signal,
+    });
   // 上限は除外後にかける。HEAD展開は無料なので、
   // 捨てられる permalink が Jina / Gemini の枠を食い潰さないようにする。
   const entries = [...urlMapping.entries()].slice(0, settings.urlContent.maxUrls);
@@ -62,22 +74,29 @@ export async function fetchUrlContents(
           settings.urlContent.timeoutMs,
         );
         try {
-          const res = await fetch(`https://r.jina.ai/${expandedUrl}`, {
-            headers: {
-              Accept: "text/plain",
-              ...(config.JINA_API_KEY
-                ? { Authorization: `Bearer ${config.JINA_API_KEY}` }
-                : {}),
-            },
-            signal: ctl.signal,
-          });
+          const useAuth = !authDisabled && Boolean(config.JINA_API_KEY);
+          let res = await callJina(expandedUrl, useAuth, ctl.signal);
 
-          // 401 は認証エラー、402 は枠切れ。どちらも残りを試す意味がないので中断する。
+          // 鍵が無効でも Jina Reader は鍵なしで動く。
+          // 401 のときだけ Authorization を外して1回だけ引き直し、全滅を防ぐ。
+          if (res.status === 401 && useAuth) {
+            if (!authDisabled) {
+              authDisabled = true;
+              console.warn(
+                "[Jina] 401 — JINA_API_KEY が無効です。鍵なしで本文取得を続けます。" +
+                  "GitHub Secrets の JINA_API_KEY を更新してください。",
+              );
+            }
+            res = await callJina(expandedUrl, false, ctl.signal);
+          }
+
+          // ここまで来ての 401 は鍵なしでも弾かれた場合。402 は枠切れ。
+          // どちらも残りを試す意味がないので中断する。
           // 同じチャンクの並列分がまとめて刺さるので、最初の1件だけ記録する。
           if (res.status === 401 || res.status === 402) {
             jinaHaltReason ??=
               res.status === 401
-                ? "401 — JINA_API_KEY が無効です。GitHub Secrets の JINA_API_KEY を確認してください。"
+                ? "401 — 鍵なしでも認証エラーが返りました。Jina Reader 側の仕様変更の可能性があります。"
                 : "402 — 無料枠が枯渇しました。";
             return { originalUrl, content: undefined };
           }

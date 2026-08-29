@@ -142,7 +142,7 @@ describe("fetchUrlContents", () => {
     expect(result.has("https://example.com/news/3")).toBe(false);
   });
 
-  it("401 は認証エラーとして報告する（枠切れの402と区別する）", async () => {
+  it("鍵なしでも401なら認証エラーとして報告する（枠切れの402と区別する）", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.stubGlobal(
       "fetch",
@@ -166,6 +166,49 @@ describe("fetchUrlContents", () => {
     expect(messages.some((m) => m.includes("JINA_API_KEY"))).toBe(true);
     expect(messages.some((m) => m.includes("無料枠が枯渇"))).toBe(false);
     // 並列分がまとめて刺さっても中断理由は1回だけ
+    expect(messages.filter((m) => m.includes("JINA_API_KEY"))).toHaveLength(1);
+    warn.mockRestore();
+  });
+
+  it("401 のとき Authorization を外して1回だけ引き直す", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const authHeaders: (string | undefined)[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (init?.method === "HEAD") {
+          return Promise.resolve({ url });
+        }
+        const auth = (init?.headers as Record<string, string> | undefined)
+          ?.Authorization;
+        authHeaders.push(auth);
+        // 鍵付きは弾かれるが、鍵なしなら通る（Jina Reader の実挙動）
+        return Promise.resolve(
+          auth
+            ? new Response(null, { status: 401 })
+            : new Response("鍵なしで取れた本文", { status: 200 }),
+        );
+      }),
+    );
+
+    const result = await fetchUrlContents(
+      makeRssItems("https://example.com/news/1", "https://example.com/news/2"),
+      mockConfig,
+      { ...baseSettings, urlContent: { ...baseSettings.urlContent, parallelism: 1 } },
+    );
+
+    expect(result.size).toBe(2);
+    expect(result.get("https://example.com/news/1")).toBe("鍵なしで取れた本文");
+    // 1件目: 鍵あり→401→鍵なしで再試行。2件目: 鍵は無効と分かっているので最初から鍵なし
+    expect(authHeaders).toEqual([
+      "Bearer test-jina",
+      undefined,
+      undefined,
+    ]);
+    // 中断していないので枠切れ扱いの警告は出ない
+    const messages = warn.mock.calls.map((c) => String(c[0]));
+    expect(messages.some((m) => m.includes("無料枠が枯渇"))).toBe(false);
     expect(messages.filter((m) => m.includes("JINA_API_KEY"))).toHaveLength(1);
     warn.mockRestore();
   });
