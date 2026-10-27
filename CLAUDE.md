@@ -59,7 +59,7 @@ npm run typecheck              # tsc --noEmit
 
 | シークレット名 | 用途 |
 |---|---|
-| `JINA_API_KEY` | Jina Reader。**401 のときは鍵なしで引き直すので、失効しても本文取得は止まらない** |
+| `JINA_API_KEY` | Jina Reader。**401（失効）・402（無料枠切れ）のときは鍵なしで引き直すので、本文取得は止まらない** |
 | `ANTHROPIC_API_KEY` | Claude（本命の分析）。**未設定・失敗時は Gemini で配信が続く** |
 | `GEMINI_API_KEY` | Gemini（Claude が失敗したときの予備） |
 | `LINE_CHANNEL_ACCESS_TOKEN` | LINE Messaging API のチャネルアクセストークン |

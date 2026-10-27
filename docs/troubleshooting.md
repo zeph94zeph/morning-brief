@@ -24,7 +24,7 @@
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
-| `402 Payment Required` | 1Mトークンの無料枠が枯渇 | **自動フォールバック済み**のため配布物は壊れない。長期利用なら Paid プラン (jina.ai/pricing) へ、または `src/settings.ts` の `urlContent.enabled` を `false` に |
+| `402` / `401` | 鍵の無料枠が枯渇 / 鍵が無効 | **鍵なしに自動で切り替えて取得を続ける**ため配信は止まらない。ただし鍵なしは回数制限が厳しく本文の取りこぼしが増えるので、jina.ai で鍵を再発行して GitHub Secrets の `JINA_API_KEY` を更新する |
 
 ### Claude
 

@@ -45,6 +45,9 @@ tool_recommendations の制約:
 - reason は80文字以内で日本語の体言止め
 - category: "watched"=固定ウォッチ対象, "discovered"=発見枠（固定対象以外の新規ツール）
 - "Gemini SPARK" は Apache Spark やメールアプリではなく Google の Gemini SPARK / Google Gemini Spark を指す
+- verdict を決める根拠にしてよいのは、機能追加・価格・無料枠・利用制限・障害・セキュリティなど、使い勝手に直接関わるニュースだけ。企業の業績・上場・資金調達・提携・人事は根拠にしない
+- 固定ウォッチ対象は1ツールにつき1項目で評価し、別のツールを1項目にまとめない
+- Anthropic（Claude / Claude Code）の製品も、他社製品と同じ基準で評価する
 
 以下のJSONデータを分析してください:
 {json_data}`;
@@ -74,7 +77,7 @@ ${CATEGORY_DEFINITIONS}
 調査メモの書き方（自由形式でよい）:
 - ニュースごとに「カテゴリ / 見出し / 確認できた事実（数字・日付・固有名詞） / 背景となぜ重要か / 出典（媒体名とURL）」を書く。
 - 確認できなかった点は「未確認」と明記し、推測で埋めない。
-- 最後に、AIツール判断の材料（関連ニュースと出典）をまとめる。`;
+- 最後に、AIツール判断の材料（関連ニュースと出典）をまとめる。材料にするのは機能・価格・無料枠・利用制限・障害・セキュリティに関するニュースで、企業の業績や資金調達は含めない。`;
 
 /** 2段階目: 調査メモを配信用の JSON に整える */
 export const CLAUDE_FORMAT_SYSTEM = `あなたはニュースブリーフの編集者です。ユーザーから渡される調査メモだけを材料に、配信用のJSONを作ります。メモにない事実を加えてはいけません。
@@ -95,4 +98,7 @@ tool_recommendations の制約:
 - verdict は "推奨" / "保留" / "注視" の3択のみ
 - reason は80文字以内で日本語の体言止め
 - category: "watched"=固定ウォッチ対象, "discovered"=発見枠（固定対象以外の新規ツール）
-- "Gemini SPARK" は Apache Spark やメールアプリではなく Google の Gemini SPARK / Google Gemini Spark を指す`;
+- "Gemini SPARK" は Apache Spark やメールアプリではなく Google の Gemini SPARK / Google Gemini Spark を指す
+- verdict を決める根拠にしてよいのは、機能追加・価格・無料枠・利用制限・障害・セキュリティなど、使い勝手に直接関わるニュースだけ。企業の業績・上場・資金調達・提携・人事は根拠にしない
+- 固定ウォッチ対象は1ツールにつき1項目で評価し、別のツールを1項目にまとめない
+- Anthropic（Claude / Claude Code）の製品も、他社製品と同じ基準で評価する`;
