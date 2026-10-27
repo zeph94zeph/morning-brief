@@ -60,7 +60,7 @@ export async function fetchUrlContents(
   const entries = [...urlMapping.entries()].slice(0, settings.urlContent.maxUrls);
   if (entries.length < urlMapping.size) {
     console.info(
-      `→ 本文取得は新しい順に ${entries.length}件 まで（settings.urlContent.maxUrls）`,
+      `→ 本文取得はソースごとに順番に ${entries.length}件 まで（settings.urlContent.maxUrls）`,
     );
   }
   const chunks = chunkArray(entries, settings.urlContent.parallelism);

@@ -42,6 +42,14 @@ export interface Settings {
     maxArticleChars: number;
     /** 裏取り・追加取材のウェブ検索回数の上限（1回 約$0.01 + 読んだ分のトークン代）。0 で検索しない */
     maxWebSearches: number;
+    /** ログに概算費用を出すための単価（USD）。model を変えたらここも合わせる */
+    pricing: {
+      inputPerMTok: number;
+      cacheWritePerMTok: number;
+      cacheReadPerMTok: number;
+      outputPerMTok: number;
+      perWebSearch: number;
+    };
   };
   /** Gemini 設定。Claude が失敗したときの予備ルートでだけ使う */
   analysis: {
@@ -79,6 +87,14 @@ export const settings: Settings = {
     formatEffort: "medium",
     maxArticleChars: 8000,
     maxWebSearches: 10,
+    // claude-opus-5-5 の単価（2026年10月時点）。キャッシュ書込は5分保持の料金
+    pricing: {
+      inputPerMTok: 4,
+      cacheWritePerMTok: 5,
+      cacheReadPerMTok: 0.2,
+      outputPerMTok: 20,
+      perWebSearch: 0.01,
+    },
   },
   analysis: {
     urlSummaryModel: "gemini-2.5-flash",
