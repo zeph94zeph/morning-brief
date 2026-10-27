@@ -228,6 +228,37 @@ describe("fetchUrlContents", () => {
     warn.mockRestore();
   });
 
+  it("鍵の無料枠切れ（402）でも鍵なしに切り替えて取得を続ける", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (init?.method === "HEAD") {
+          return Promise.resolve({ url });
+        }
+        const auth = (init?.headers as Record<string, string> | undefined)
+          ?.Authorization;
+        return Promise.resolve(
+          auth
+            ? new Response(null, { status: 402 })
+            : new Response("鍵なしで取れた本文", { status: 200 }),
+        );
+      }),
+    );
+
+    const result = await fetchUrlContents(
+      makeRssItems("https://example.com/news/1", "https://example.com/news/2"),
+      mockConfig,
+      { ...baseSettings, urlContent: { ...baseSettings.urlContent, parallelism: 1 } },
+    );
+
+    expect(result.size).toBe(2);
+    const messages = warn.mock.calls.map((c) => String(c[0]));
+    expect(messages.filter((m) => m.includes("無料枠を使い切りました"))).toHaveLength(1);
+    warn.mockRestore();
+  });
+
   it("除外される permalink は maxUrls の枠を消費しない", async () => {
     stubFetchOk("本文");
 

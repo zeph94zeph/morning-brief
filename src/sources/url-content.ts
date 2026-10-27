@@ -79,21 +79,24 @@ export async function fetchUrlContents(
           const useAuth = !authDisabled && Boolean(config.JINA_API_KEY);
           let res = await callJina(expandedUrl, useAuth, ctl.signal);
 
-          // 鍵が無効でも Jina Reader は鍵なしで動く。
-          // 401 のときだけ Authorization を外して1回だけ引き直し、全滅を防ぐ。
-          if (res.status === 401 && useAuth) {
+          // 鍵が無効（401）でも、鍵の無料枠を使い切っても（402）、Jina Reader は鍵なしで動く。
+          // どちらのときも Authorization を外して1回だけ引き直し、全滅を防ぐ。
+          if ((res.status === 401 || res.status === 402) && useAuth) {
             if (!authDisabled) {
               authDisabled = true;
               console.warn(
-                "[Jina] 401 — JINA_API_KEY が無効です。鍵なしで本文取得を続けます。" +
-                  "GitHub Secrets の JINA_API_KEY を更新してください。",
+                res.status === 401
+                  ? "[Jina] 401 — JINA_API_KEY が無効です。鍵なしで本文取得を続けます。" +
+                      "GitHub Secrets の JINA_API_KEY を更新してください。"
+                  : "[Jina] 402 — JINA_API_KEY の無料枠を使い切りました。鍵なしで本文取得を続けます。" +
+                      "jina.ai でトークンを追加するか、新しい鍵に更新してください。",
               );
             }
             res = await callJina(expandedUrl, false, ctl.signal);
           }
 
-          // ここまで来ての 401 は鍵なしでも弾かれた場合。402 は枠切れ。
-          // どちらも残りを試す意味がないので中断する。
+          // ここまで来ての 401 / 402 は鍵なしでも弾かれた場合。
+          // 残りを試す意味がないので中断する。
           // 同じチャンクの並列分がまとめて刺さるので、最初の1件だけ記録する。
           if (res.status === 401 || res.status === 402) {
             jinaHaltReason ??=
