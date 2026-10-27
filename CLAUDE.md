@@ -1,7 +1,8 @@
 # AIニュース（Morning Brief）
 
 RSSフィード（既定）またはXのホームタイムラインから24時間以内のニュースを収集し、
-Geminiで分析してLINEに配信する自動配信ツール。
+Claude が記事本文を読みウェブ検索で裏付けを取って分析し、LINEに配信する自動配信ツール。
+Claude が失敗したら Gemini、それも失敗したら記事ベースの簡易版で配信する。
 GitHub Actions で毎朝 03:37 JST に実行される（`.github/workflows/daily-news.yml`）。
 
 ## プロジェクト構造
@@ -17,11 +18,12 @@ src/
 │   ├── x-timeline.ts    # X API タイムライン取得 + モックルート分岐
 │   └── url-content.ts   # Jina Reader で URL 本文並列取得
 ├── analysis/
-│   ├── url-summarizer.ts # Gemini Flash で各URL要約
-│   ├── analyze.ts       # Gemini で最終トレンド分析 + ツールアドバイザー
-│   ├── fallback.ts      # Gemini が落ちたときの記事ベース簡易分析
+│   ├── claude-analyze.ts # 本命。Claude が本文を読み検索で裏取り → JSON に整形（2段階）
+│   ├── url-summarizer.ts # 予備ルート: Gemini Flash で各URL要約
+│   ├── analyze.ts       # 予備ルート: Gemini で最終トレンド分析 + ツールアドバイザー
+│   ├── fallback.ts      # Claude も Gemini も落ちたときの記事ベース簡易分析
 │   ├── schema.ts        # zod スキーマ（SSoT）
-│   └── prompts.ts       # プロンプト2つ
+│   └── prompts.ts       # プロンプト（Gemini 用2つ + Claude 用2つ）
 ├── delivery/
 │   ├── line.ts          # LINE Messaging API broadcast（現在の配信先）
 │   └── slack.ts         # 旧Slack配信。現在どこからも呼ばれていない
@@ -45,7 +47,7 @@ npm run typecheck              # tsc --noEmit
 
 1. `src/main.ts` — 4ステップの全体像
 2. `src/sources/rss-feeds.ts` — ソース元（X ルートを見たいときは `x-timeline.ts`）
-3. `src/analysis/analyze.ts` — 処理
+3. `src/analysis/claude-analyze.ts` — 処理（Gemini の予備ルートは `analyze.ts`）
 4. `src/delivery/line.ts` — 届ける先
 5. `src/settings.ts` — 設定を変えたいとき
 
@@ -56,7 +58,8 @@ npm run typecheck              # tsc --noEmit
 | シークレット名 | 用途 |
 |---|---|
 | `JINA_API_KEY` | Jina Reader。**401 のときは鍵なしで引き直すので、失効しても本文取得は止まらない** |
-| `GEMINI_API_KEY` | Gemini（URL要約 + トレンド分析） |
+| `ANTHROPIC_API_KEY` | Claude（本命の分析）。**未設定・失敗時は Gemini で配信が続く** |
+| `GEMINI_API_KEY` | Gemini（Claude が失敗したときの予備） |
 | `LINE_CHANNEL_ACCESS_TOKEN` | LINE Messaging API のチャネルアクセストークン |
 | `LINE_USER_ID` | 配信先ユーザーID（`LINE_USER_ID_2` は任意） |
 

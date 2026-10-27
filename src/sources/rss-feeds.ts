@@ -15,13 +15,16 @@ export async function fetchRssFeeds(settings: Settings): Promise<RawTweet[]> {
   );
 
   const allItems: RawTweet[] = [];
-  for (const result of results) {
+  results.forEach((result, i) => {
+    const name = settings.rss.feeds[i]?.name;
     if (result.status === "fulfilled") {
       allItems.push(...result.value);
+      // 0件が続くフィードは URL が死んでいる可能性がある
+      console.info(`[RSS] ${name}: ${result.value.length}件`);
     } else {
-      console.warn(`[RSS] フィード取得失敗: ${String(result.reason)}`);
+      console.warn(`[RSS] フィード取得失敗 (${name}): ${String(result.reason)}`);
     }
-  }
+  });
 
   allItems.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),

@@ -13,6 +13,8 @@ export interface ToolAdvisorSettings {
   userProfile: { primaryUseCases: string[]; constraints: string[] };
 }
 
+export type ClaudeEffort = "low" | "medium" | "high" | "xhigh" | "max";
+
 export interface Settings {
   schedule: {
     lookbackHours: number;
@@ -20,13 +22,28 @@ export interface Settings {
   };
   urlContent: {
     enabled: boolean;
-    /** 本文を取りに行く URL の上限。Jina / Gemini の無料枠を守るための安全弁 */
+    /** 本文を取りに行く URL の上限。Jina の無料枠と Claude の入力コストを守るための安全弁 */
     maxUrls: number;
     timeoutMs: number;
     parallelism: number;
     maxSummaryChars: number;
     inputCharsMultiplier: number;
   };
+  /** 本命の分析エンジン。失敗したときだけ analysis（Gemini）に切り替わる */
+  claude: {
+    /** false にすると Claude を使わず最初から Gemini で分析する（ANTHROPIC_API_KEY 未設定時も同じ） */
+    enabled: boolean;
+    model: string;
+    /** 考える深さ。low / medium / high / xhigh / max。上げるほど精度もコストも上がる */
+    effort: ClaudeEffort;
+    /** 調査メモを JSON に整える2段階目の effort。材料は揃っているので軽めでよい */
+    formatEffort: ClaudeEffort;
+    /** 1記事あたり Claude に渡す本文の上限文字数。コストの安全弁 */
+    maxArticleChars: number;
+    /** 裏取り・追加取材のウェブ検索回数の上限（1回 約$0.01 + 読んだ分のトークン代）。0 で検索しない */
+    maxWebSearches: number;
+  };
+  /** Gemini 設定。Claude が失敗したときの予備ルートでだけ使う */
   analysis: {
     urlSummaryModel: string;
     trendAnalysisModel: string;
@@ -48,11 +65,20 @@ export const settings: Settings = {
   },
   urlContent: {
     enabled: true,
-    maxUrls: 12,
+    // Claude に本文ごと読ませる記事数。ソースごとに新しい順で1件ずつ順番に選ぶ（18フィード×2件）
+    maxUrls: 36,
     timeoutMs: 10_000,
     parallelism: 10,
     maxSummaryChars: 200,
     inputCharsMultiplier: 20,
+  },
+  claude: {
+    enabled: true,
+    model: "claude-opus-5-5",
+    effort: "high",
+    formatEffort: "medium",
+    maxArticleChars: 8000,
+    maxWebSearches: 10,
   },
   analysis: {
     urlSummaryModel: "gemini-2.5-flash",
@@ -105,14 +131,20 @@ export const settings: Settings = {
       { name: "BBC Japan",        url: "https://feeds.bbci.co.uk/japanese/rss.xml" },
       { name: "時事通信",          url: "https://www.jiji.com/rss/ranking.rdf" },
       { name: "CNN Japan",        url: "https://feeds.cnn.co.jp/cnn/rss" },
+      { name: "NHK 国際",          url: "https://www3.nhk.or.jp/rss/news/cat6.xml" },
       // ── AI 専門メディア ──────────────────────────────────────
       { name: "TechCrunch AI",    url: "https://techcrunch.com/category/artificial-intelligence/feed/" },
       { name: "VentureBeat AI",   url: "https://venturebeat.com/category/ai/feed/" },
       { name: "MIT Tech Review",  url: "https://www.technologyreview.com/feed/" },
+      { name: "The Verge AI",     url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml" },
+      { name: "Ars Technica AI",  url: "https://arstechnica.com/ai/feed/" },
+      { name: "ITmedia AI+",      url: "https://rss.itmedia.co.jp/rss/2.0/aiplus.xml" },
+      { name: "Publickey",        url: "https://www.publickey1.jp/atom.xml" },
       // ── 公式ブログ ───────────────────────────────────────────
       { name: "OpenAI Blog",      url: "https://openai.com/news/rss.xml" },
       { name: "Google AI Blog",   url: "https://blog.research.google/feeds/posts/default?alt=rss" },
       { name: "Hugging Face",     url: "https://huggingface.co/blog/feed.xml" },
+      { name: "Google DeepMind",  url: "https://deepmind.google/blog/rss.xml" },
     ],
   },
   

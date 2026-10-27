@@ -30,6 +30,7 @@ export function buildFallbackAnalysis(tweets: EnrichedTweet[]): Analysis {
       title,
       details: [detail],
       sources: [tweet.url],
+      source_names: [tweet.authorId],
     });
   }
 
@@ -61,13 +62,13 @@ function splitTitleAndDetail(text: string): { title: string; detail: string } {
     title: title.slice(0, 120),
     detail:
       detail ||
-      "Gemini分析が混雑などで失敗したため、RSS記事を新着順で簡易配信しています。",
+      "Claude と Gemini の分析がどちらも失敗したため、RSS記事を新着順で簡易配信しています。",
   };
 }
 
 function addFallbackNotice(analysis: Analysis): void {
   const notice =
-    "Gemini分析が混雑などで失敗したため、RSS記事を新着順で簡易配信しています。";
+    "Claude と Gemini の分析がどちらも失敗したため、RSS記事を新着順で簡易配信しています。";
   const buckets = [
     analysis.political_economic_news,
     analysis.world_news,
@@ -77,9 +78,10 @@ function addFallbackNotice(analysis: Analysis): void {
   const firstItem = firstBucket?.[0];
   if (!firstItem) {
     analysis.ai_news.push({
-      title: "Gemini分析混雑のため簡易版を配信できませんでした",
+      title: "AI分析に失敗したため簡易版を配信できませんでした",
       details: [notice],
       sources: [],
+      source_names: [],
     });
     return;
   }

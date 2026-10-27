@@ -5,6 +5,8 @@ const NewsItemSchema = z.object({
       title: z.string(),
       details: z.array(z.string()).max(2),
       sources: z.array(z.string()),
+      /** 読み上げ用の媒体名（例: "NHK", "ロイター"）。URL は sources に入れる */
+      source_names: z.array(z.string()).default([]),
 });
 
 const ToolRecommendationSchema = z.object({
@@ -26,7 +28,33 @@ export const AnalysisSchema = z.object({
 
 export type Analysis = z.infer<typeof AnalysisSchema>;
 
+/** Gemini の responseSchema 用 */
 export const analysisResponseSchema = zodToJsonSchema(AnalysisSchema, {
       target: "openApi3",
       $refStrategy: "none",
 });
+
+/**
+ * Claude の構造化出力用。
+ * API が受け付けない制約（maxItems・default など）を外し、全項目を必須にする。
+ * 件数の上限は受け取った後に AnalysisSchema.parse で確かめる。
+ */
+export const claudeAnalysisJsonSchema = toStrictJsonSchema(
+  zodToJsonSchema(AnalysisSchema, { $refStrategy: "none" }),
+);
+
+function toStrictJsonSchema(node: unknown): Record<string, unknown> {
+  const src = node as Record<string, unknown>;
+  const out: Record<string, unknown> = { type: src.type };
+  if (src.enum) out.enum = src.enum;
+  if (src.type === "array") out.items = toStrictJsonSchema(src.items);
+  if (src.type === "object") {
+    const props = src.properties as Record<string, unknown>;
+    out.properties = Object.fromEntries(
+      Object.entries(props).map(([k, v]) => [k, toStrictJsonSchema(v)]),
+    );
+    out.required = Object.keys(props);
+    out.additionalProperties = false;
+  }
+  return out;
+}

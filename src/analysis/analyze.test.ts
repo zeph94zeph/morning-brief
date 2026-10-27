@@ -35,6 +35,14 @@ const mockSettings: Settings = {
     maxSummaryChars: 200,
     inputCharsMultiplier: 20,
   },
+  claude: {
+    enabled: false,
+    model: "claude-opus-5-5",
+    effort: "high",
+    formatEffort: "medium",
+    maxArticleChars: 8000,
+    maxWebSearches: 0,
+  },
   analysis: {
     urlSummaryModel: "gemini-2.5-flash",
     trendAnalysisModel: "gemini-2.5-pro",
@@ -123,7 +131,7 @@ describe("analyzeTrends", () => {
     await vi.advanceTimersByTimeAsync(10);
     await vi.advanceTimersByTimeAsync(20);
 
-    await expect(resultPromise).resolves.toEqual(validResponse);
+    await expect(resultPromise).resolves.toMatchObject(validResponse);
     expect(mockGenerateContent).toHaveBeenCalledTimes(3);
     vi.useRealTimers();
   });

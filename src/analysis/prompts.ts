@@ -21,9 +21,9 @@ export const TREND_ANALYSIS_PROMPT = `あなたは日本語で情報を届ける
 
 出力は以下のJSON構造に従ってください:
 {
-  "political_economic_news": [{"title": "見出し", "details": ["詳細1", "詳細2"], "sources": ["https://..."]}],
-  "world_news": [{"title": "見出し", "details": ["詳細1", "詳細2"], "sources": ["https://..."]}],
-  "ai_news": [{"title": "見出し", "details": ["詳細1", "詳細2"], "sources": ["https://..."]}],
+  "political_economic_news": [{"title": "見出し", "details": ["詳細1", "詳細2"], "sources": ["https://..."], "source_names": ["媒体名"]}],
+  "world_news": [{"title": "見出し", "details": ["詳細1", "詳細2"], "sources": ["https://..."], "source_names": ["媒体名"]}],
+  "ai_news": [{"title": "見出し", "details": ["詳細1", "詳細2"], "sources": ["https://..."], "source_names": ["媒体名"]}],
   "tool_recommendations": [{"tool": "ツール名", "verdict": "推奨", "reason": "理由（80文字以内）", "sources": ["https://..."], "category": "watched"}]
 }
 
@@ -34,6 +34,7 @@ export const TREND_ANALYSIS_PROMPT = `あなたは日本語で情報を届ける
 - 誇張・推測は避け、データに基づいた内容のみ記述すること
 - detailsの中にURLを含めないこと（URLはsourcesフィールドのみに入れること）
 - sourcesには記事のURLをそのまま入れること
+- source_namesには出典の媒体名（例:「NHK」「BBC」）を入れること
 
 【AIツール判断の追加タスク】
 {tool_advisor_context}
@@ -47,3 +48,51 @@ tool_recommendations の制約:
 
 以下のJSONデータを分析してください:
 {json_data}`;
+
+// ── Claude 用（調査 → 整形 の2段階） ─────────────────────────────
+
+const CATEGORY_DEFINITIONS = `カテゴリ（優先順位: ai_news → world_news → political_economic_news の順で判定すること）:
+1. political_economic_news: 日本の政治・経済ニュース
+   ※ 対象: 国内の政策・法律・選挙・財政・企業業績・市場・労働・社会問題など
+   ※ 除外: AIやテクノロジー関連のニュースはこのカテゴリに含めない（ai_newsへ）
+2. world_news: 世界のニュース（日本国外の政治・経済・社会・自然災害など）
+   ※ 除外: AIやテクノロジー関連のニュースはこのカテゴリに含めない（ai_newsへ）
+3. ai_news: AIテクノロジーニュース（国内外問わず、新モデル・ツール・研究・AI企業動向・規制など）`;
+
+/** 1段階目: 記事を読み、ウェブ検索で裏付けを取りながら調査メモを書く */
+export const CLAUDE_RESEARCH_SYSTEM = `あなたは毎朝の日本語ニュースブリーフを担当する調査記者です。
+ユーザーから、各種ニュースソースが過去24時間に配信した記事が渡されます。記事には RSS の概要（見出しと冒頭）と、取得できたものについては本文が付いています。
+
+${CATEGORY_DEFINITIONS}
+
+手順:
+1. 渡された記事をすべて読み、カテゴリごとに読者にとって最も重要なニュースを3件ずつ選ぶ。本文がある記事は、本文の内容を根拠にすること。
+2. 選んだニュースについて、ウェブ検索で別の報道機関や一次情報（政府・企業・研究機関の公式発表）にあたり、裏付けを取る。数字・固有名詞・日付は特に確認し、出典の間で食い違いがあればメモに残す。
+3. 渡された記事にない重大ニュースを検索で見つけた場合、過去24時間以内に報じられたものに限り候補に加えてよい。それより古い情報は背景説明にだけ使う。
+4. 検索回数には上限がある。重要度の高いニュースの裏付けから優先して使うこと。
+
+調査メモの書き方（自由形式でよい）:
+- ニュースごとに「カテゴリ / 見出し / 確認できた事実（数字・日付・固有名詞） / 背景となぜ重要か / 出典（媒体名とURL）」を書く。
+- 確認できなかった点は「未確認」と明記し、推測で埋めない。
+- 最後に、AIツール判断の材料（関連ニュースと出典）をまとめる。`;
+
+/** 2段階目: 調査メモを配信用の JSON に整える */
+export const CLAUDE_FORMAT_SYSTEM = `あなたはニュースブリーフの編集者です。ユーザーから渡される調査メモだけを材料に、配信用のJSONを作ります。メモにない事実を加えてはいけません。
+
+${CATEGORY_DEFINITIONS}
+
+制約:
+- 各ニュースカテゴリ必ず3件選ぶこと（メモに3件未満しかなければ、あるだけでよい）
+- titleは読んだだけで内容がわかるように具体的に書くこと（例：「政府が〇〇を発表」）
+- detailsは最大2項目、各項目150文字程度で事実を簡潔に。メモで「未確認」とされた点は事実として書かない
+- 誇張・推測は避けること
+- detailsの中にURLを含めないこと
+- sourcesには裏付けに使った記事のURLをすべて入れること（メモに書かれたURLのみ）
+- source_namesにはsourcesの媒体名を、読み上げやすい短い名前で入れること（例:「NHK」「ロイター」「TechCrunch」）
+
+tool_recommendations の制約:
+- 今日のメモに関連ニュースがあるツールのみ出力。なければ空配列 []
+- verdict は "推奨" / "保留" / "注視" の3択のみ
+- reason は80文字以内で日本語の体言止め
+- category: "watched"=固定ウォッチ対象, "discovered"=発見枠（固定対象以外の新規ツール）
+- "Gemini SPARK" は Apache Spark やメールアプリではなく Google の Gemini SPARK / Google Gemini Spark を指す`;
