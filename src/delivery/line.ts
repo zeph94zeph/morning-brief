@@ -70,9 +70,6 @@ function buildMessages(
         const clean = stripUrls(detail);
         if (clean) lines.push(clean);
       }
-      if (item.source_names.length > 0) {
-        lines.push(`出典：${[...new Set(item.source_names)].join("、")}。`);
-      }
     });
   }
 
@@ -97,6 +94,16 @@ function buildMessages(
       lines.push(`${i + 1}、${r.tool}。`);
       lines.push(r.reason);
     });
+  }
+
+  // 出典は各ニュースの後ろではなく、最後に重複を除いてまとめて読み上げる
+  const sourceNames = [
+    ...new Set(sections.flatMap((s) => s.items.flatMap((item) => item.source_names))),
+  ];
+  if (sourceNames.length > 0) {
+    lines.push("");
+    lines.push("本日の出典。");
+    lines.push(`${sourceNames.join("、")}。`);
   }
 
   const fullText = lines.join("\n");
