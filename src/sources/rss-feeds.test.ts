@@ -31,6 +31,16 @@ describe("checkFeed", () => {
     expect(report.head).toBeUndefined();
   });
 
+  it("RSS 1.0（RDF）の dc:date を日付として読む", async () => {
+    stubBody(
+      `<rdf:RDF><item><title>old</title><link>https://example.com/old</link>` +
+        `<dc:date>2026-10-19T09:00:00+09:00</dc:date></item></rdf:RDF>`,
+    );
+    const { items, report } = await checkFeed(feed, cutoff);
+    expect(items).toHaveLength(0);
+    expect(report.newest).toBe("2026-10-19T00:00:00.000Z");
+  });
+
   it("日付のない記事は残す（従来どおり）", async () => {
     stubBody(`<rss><channel>${item("undated")}</channel></rss>`);
     const { items, report } = await checkFeed(feed, cutoff);

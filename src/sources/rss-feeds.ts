@@ -161,7 +161,9 @@ function extractDate(block: string): string | undefined {
   const raw =
     extractTag(block, "pubDate") ??
     extractTag(block, "published") ??
-    extractTag(block, "updated");
+    extractTag(block, "updated") ??
+    // RSS 1.0（RDF）形式（時事通信・CNN Japan など）は日付を dc:date に入れる
+    extractTag(block, "dc:date");
   if (!raw) return undefined;
   const d = new Date(raw);
   return isNaN(d.getTime()) ? undefined : d.toISOString();

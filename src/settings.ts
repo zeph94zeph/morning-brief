@@ -140,14 +140,14 @@ export const settings: Settings = {
   rss: {
     feeds: [
             // ── 日本の政治・経済 ─────────────────────────────────
-      { name: "NHK 政治",       url: "https://www3.nhk.or.jp/rss/news/cat4.xml" },
-      { name: "NHK 経済",       url: "https://www3.nhk.or.jp/rss/news/cat5.xml" },
+      { name: "NHK 政治",       url: "https://news.web.nhk/n-data/conf/na/rss/cat4.xml" },
+      { name: "NHK 経済",       url: "https://news.web.nhk/n-data/conf/na/rss/cat5.xml" },
       { name: "東洋経済",        url: "https://toyokeizai.net/list/feed/rss" },
             // ── 世界のニュース ────────────────────────────────
       { name: "BBC Japan",        url: "https://feeds.bbci.co.uk/japanese/rss.xml" },
       { name: "時事通信",          url: "https://www.jiji.com/rss/ranking.rdf" },
       { name: "CNN Japan",        url: "https://feeds.cnn.co.jp/cnn/rss" },
-      { name: "NHK 国際",          url: "https://www3.nhk.or.jp/rss/news/cat6.xml" },
+      { name: "NHK 国際",          url: "https://news.web.nhk/n-data/conf/na/rss/cat6.xml" },
       // ── AI 専門メディア ──────────────────────────────────────
       { name: "TechCrunch AI",    url: "https://techcrunch.com/category/artificial-intelligence/feed/" },
       { name: "VentureBeat AI",   url: "https://venturebeat.com/category/ai/feed/" },
@@ -158,7 +158,7 @@ export const settings: Settings = {
       { name: "Publickey",        url: "https://www.publickey1.jp/atom.xml" },
       // ── 公式ブログ ───────────────────────────────────────────
       { name: "OpenAI Blog",      url: "https://openai.com/news/rss.xml" },
-      { name: "Google AI Blog",   url: "https://blog.research.google/feeds/posts/default?alt=rss" },
+      { name: "Google Research",   url: "https://research.google/blog/rss/" },
       { name: "Hugging Face",     url: "https://huggingface.co/blog/feed.xml" },
       { name: "Google DeepMind",  url: "https://deepmind.google/blog/rss.xml" },
     ],
