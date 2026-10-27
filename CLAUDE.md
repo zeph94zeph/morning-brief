@@ -10,6 +10,7 @@ GitHub Actions で毎朝 03:37 JST に実行される（`.github/workflows/daily
 ```
 src/
 ├── main.ts              # エントリポイント（最初にここを読む）
+├── check-feeds.ts       # RSS フィードの健康診断（配信しない）
 ├── settings.ts          # 受講生が触る全設定（TS定数）
 ├── config.ts            # 環境変数の zod 検証
 ├── types.ts             # 共通型定義
@@ -39,6 +40,7 @@ src/
 USE_RSS=true npm start         # 通常実行（GitHub Actions と同じルート）
 USE_SAMPLE_DATA=true npm start # モックルート（X API / RSS 不要）
 npm start                      # X API ルート（X_* のシークレットが要る）
+npm run check-feeds            # RSS フィードの健康診断（LINE 配信なし・APIキー不要）
 npm test                       # vitest
 npm run typecheck              # tsc --noEmit
 ```
