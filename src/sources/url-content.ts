@@ -27,7 +27,9 @@ export async function fetchUrlContents(
     return contents;
   }
 
-  const allRawUrls = tweets.flatMap((t) => collectUrls(t));
+  // 上限 maxUrls で切るので、新着順のままだと配信数の多い媒体が枠を独占する。
+  // ソースごとに1件ずつ順番に並べ、どの媒体の記事も本文まで読まれるようにする。
+  const allRawUrls = interleaveBySource(tweets).flatMap((t) => collectUrls(t));
   const uniqueRawUrls = [...new Set(allRawUrls)];
 
   if (uniqueRawUrls.length === 0) return contents;
@@ -128,6 +130,25 @@ export async function fetchUrlContents(
   }
 
   return contents;
+}
+
+/** ソース（authorId）ごとに元の順序を保ったまま、1件ずつ順番に取り出す */
+export function interleaveBySource(tweets: RawTweet[]): RawTweet[] {
+  const queues = new Map<string, RawTweet[]>();
+  for (const tweet of tweets) {
+    const queue = queues.get(tweet.authorId);
+    if (queue) queue.push(tweet);
+    else queues.set(tweet.authorId, [tweet]);
+  }
+
+  const result: RawTweet[] = [];
+  for (let i = 0; result.length < tweets.length; i++) {
+    for (const queue of queues.values()) {
+      const tweet = queue[i];
+      if (tweet) result.push(tweet);
+    }
+  }
+  return result;
 }
 
 /** 1件の記事／投稿から本文取得の候補URLを集める */

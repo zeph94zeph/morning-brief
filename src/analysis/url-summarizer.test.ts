@@ -34,6 +34,14 @@ const mockSettings: Settings = {
     maxSummaryChars: 200,
     inputCharsMultiplier: 20,
   },
+  claude: {
+    enabled: false,
+    model: "claude-opus-5-5",
+    effort: "high",
+    formatEffort: "medium",
+    maxArticleChars: 8000,
+    maxWebSearches: 0,
+  },
   analysis: {
     urlSummaryModel: "gemini-2.5-flash",
     trendAnalysisModel: "gemini-2.5-pro",

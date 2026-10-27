@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { fetchUrlContents } from "./url-content.js";
+import { fetchUrlContents, interleaveBySource } from "./url-content.js";
 import type { Config } from "../config.js";
 import type { Settings } from "../settings.js";
 import type { RawTweet } from "../types.js";
@@ -22,6 +22,14 @@ const baseSettings: Settings = {
     parallelism: 5,
     maxSummaryChars: 200,
     inputCharsMultiplier: 20,
+  },
+  claude: {
+    enabled: false,
+    model: "claude-opus-5-5",
+    effort: "high",
+    formatEffort: "medium",
+    maxArticleChars: 8000,
+    maxWebSearches: 0,
   },
   analysis: {
     urlSummaryModel: "gemini-2.5-flash",
@@ -282,5 +290,35 @@ describe("fetchUrlContents", () => {
     });
     expect(result.size).toBe(1);
     expect([...result.values()][0]).toBe("First article");
+  });
+});
+
+describe("interleaveBySource", () => {
+  const item = (authorId: string, n: number): RawTweet => ({
+    authorId,
+    text: `${authorId}-${n}`,
+    createdAt: "2026-04-16T10:00:00.000Z",
+    url: `https://example.com/${authorId}/${n}`,
+  });
+
+  it("ソースごとに元の順序を保ったまま1件ずつ交互に並べる", () => {
+    const tweets = [item("A", 1), item("A", 2), item("A", 3), item("B", 1), item("C", 1), item("C", 2)];
+    expect(interleaveBySource(tweets).map((t) => t.text)).toEqual([
+      "A-1", "B-1", "C-1", "A-2", "C-2", "A-3",
+    ]);
+  });
+
+  it("件数の多いソースが本文取得の枠を独占しない", async () => {
+    stubFetchOk();
+
+    const tweets = [item("A", 1), item("A", 2), item("A", 3), item("B", 1)];
+    const result = await fetchUrlContents(tweets, mockConfig, {
+      ...baseSettings,
+      urlContent: { ...baseSettings.urlContent, maxUrls: 2 },
+    });
+    expect([...result.keys()]).toEqual([
+      "https://example.com/A/1",
+      "https://example.com/B/1",
+    ]);
   });
 });

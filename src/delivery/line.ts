@@ -7,8 +7,9 @@ const LINE_API_URL = "https://api.line.me/v2/bot/message/broadcast";
 export async function postToLine(
     analysis: Analysis,
     config: Config,
+    notice?: string,
   ): Promise<void> {
-    const messages = buildMessages(analysis);
+    const messages = buildMessages(analysis, notice);
 
   for (const message of messages) {
         const res = await fetch(LINE_API_URL, {
@@ -37,7 +38,10 @@ function stripUrls(text: string): string {
     return text.replace(/https?:\/\/\S+/g, "").replace(/\s{2,}/g, " ").trim();
 }
 
-function buildMessages(analysis: Analysis): Array<{ type: string; text: string }> {
+function buildMessages(
+  analysis: Analysis,
+  notice?: string,
+): Array<{ type: string; text: string }> {
   const today = new Date().toLocaleDateString("ja-JP", {
     year: "numeric", month: "long", day: "numeric", weekday: "short",
     timeZone: "Asia/Tokyo",
@@ -45,6 +49,7 @@ function buildMessages(analysis: Analysis): Array<{ type: string; text: string }
 
   const lines: string[] = [];
   lines.push(`本日のモーニングブリーフ。${today}。`);
+  if (notice) lines.push(notice);
 
   const sections: Array<{ title: string; items: Analysis["political_economic_news"] }> = [
     { title: "日本の政治・経済",  items: analysis.political_economic_news },
@@ -64,6 +69,9 @@ function buildMessages(analysis: Analysis): Array<{ type: string; text: string }
       for (const detail of item.details) {
         const clean = stripUrls(detail);
         if (clean) lines.push(clean);
+      }
+      if (item.source_names.length > 0) {
+        lines.push(`出典：${[...new Set(item.source_names)].join("、")}。`);
       }
     });
   }

@@ -99,7 +99,7 @@ async function retryOnTransient<T>(
   throw new Error("unreachable");
 }
 
-function buildToolAdvisorContext(advisor: ToolAdvisorSettings): string {
+export function buildToolAdvisorContext(advisor: ToolAdvisorSettings): string {
   if (!advisor.enabled) {
     return "AIツール判断は無効。tool_recommendations は空配列 [] にすること。";
   }

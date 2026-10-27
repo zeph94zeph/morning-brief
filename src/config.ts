@@ -7,6 +7,11 @@ loadDotenv();
 const baseSchema = z.object({
   JINA_API_KEY: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
+  // 未設定なら Claude を飛ばして Gemini で分析する（空文字は未設定扱い）
+  ANTHROPIC_API_KEY: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : undefined)),
   LINE_CHANNEL_ACCESS_TOKEN: z.string().min(1),
   LINE_USER_ID: z.string().min(1),
   LINE_USER_ID_2: z.string().optional(),

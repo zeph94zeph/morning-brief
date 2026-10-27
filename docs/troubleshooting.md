@@ -26,7 +26,18 @@
 |---|---|---|
 | `402 Payment Required` | 1Mトークンの無料枠が枯渇 | **自動フォールバック済み**のため配布物は壊れない。長期利用なら Paid プラン (jina.ai/pricing) へ、または `src/settings.ts` の `urlContent.enabled` を `false` に |
 
-### Gemini
+### Claude
+
+Claude が失敗しても配信は止まらず、Gemini で作った版が届く（冒頭に「本日は Claude の分析に失敗したため…」と入る）。
+
+| 症状 | 原因 | 対処 |
+|---|---|---|
+| LINE に「Claude の分析に失敗したため」と出る | クレジット残高切れ・期限切れ、または `ANTHROPIC_API_KEY` の誤り | Claude Console（platform.claude.com）の Billing で残高と有効期限を確認。クレジットを購入するか、`src/settings.ts` の `claude.enabled` を `false` にして Gemini に戻す |
+| `401 authentication_error` | APIキーの誤り・失効 | Claude Console で再発行し、GitHub Secrets の `ANTHROPIC_API_KEY` を更新 |
+| 費用が想定より多い | 記事本文・検索の量が多い | ログの `[Claude 調査]` 行でトークン数と検索回数を確認。`claude.maxWebSearches` / `claude.maxArticleChars` / `urlContent.maxUrls` を下げる |
+| `web search is not enabled` | 組織の設定でウェブ検索が無効 | Claude Console の設定で有効にするか、`claude.maxWebSearches` を `0` に |
+
+### Gemini（予備）
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
