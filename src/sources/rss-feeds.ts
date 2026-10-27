@@ -11,16 +11,20 @@ export async function fetchRssFeeds(settings: Settings): Promise<RawTweet[]> {
   );
 
   const results = await Promise.allSettled(
-    settings.rss.feeds.map((feed) => fetchOneFeed(feed, cutoff)),
+    settings.rss.feeds.map((feed) => checkFeed(feed, cutoff)),
   );
 
   const allItems: RawTweet[] = [];
   results.forEach((result, i) => {
     const name = settings.rss.feeds[i]?.name;
     if (result.status === "fulfilled") {
-      allItems.push(...result.value);
-      // 0件が続くフィードは URL が死んでいる可能性がある
-      console.info(`[RSS] ${name}: ${result.value.length}件`);
+      const { items, report } = result.value;
+      allItems.push(...items);
+      // 0件のときは理由を切り分けられるように中身の様子も出す
+      console.info(
+        `[RSS] ${name}: ${items.length}件` +
+          (items.length === 0 ? `（${describeReport(report)}）` : ""),
+      );
     } else {
       console.warn(`[RSS] フィード取得失敗 (${name}): ${String(result.reason)}`);
     }
@@ -37,10 +41,25 @@ export async function fetchRssFeeds(settings: Settings): Promise<RawTweet[]> {
   return limited;
 }
 
-async function fetchOneFeed(
+/** 1フィードの取得結果。0件だったときに原因を切り分けるための情報 */
+export interface FeedReport {
+  status: number;
+  /** リダイレクト後の最終URL */
+  finalUrl: string;
+  contentType: string;
+  /** 日付で絞る前に読み取れた記事数 */
+  parsed: number;
+  /** 読み取れた記事のうち最も新しい日付（ISO） */
+  newest?: string;
+  /** 記事を1件も読み取れなかったときの本文の冒頭 */
+  head?: string;
+}
+
+/** フィードを取得し、cutoff より新しい記事と診断情報を返す。HTTP エラーは throw する */
+export async function checkFeed(
   feed: { name: string; url: string },
   cutoff: Date,
-): Promise<RawTweet[]> {
+): Promise<{ items: RawTweet[]; report: FeedReport }> {
   const res = await fetch(feed.url, {
     headers: {
       "User-Agent": "ai-news-bot/1.0",
@@ -54,15 +73,42 @@ async function fetchOneFeed(
   }
 
   const xml = await res.text();
-  return parseRssItems(xml, feed.name, cutoff);
+  const parsed = parseRssItems(xml, feed.name);
+  const dates = parsed.flatMap((p) => (p.dated ? [p.item.createdAt] : [])).sort();
+
+  return {
+    // 日付のない記事は従来どおり残す（取得時刻を日付として扱う）
+    items: parsed
+      .filter((p) => !p.dated || new Date(p.item.createdAt) >= cutoff)
+      .map((p) => p.item),
+    report: {
+      status: res.status,
+      finalUrl: res.url,
+      contentType: res.headers.get("content-type") ?? "",
+      parsed: parsed.length,
+      newest: dates.at(-1),
+      head:
+        parsed.length === 0
+          ? xml.slice(0, 300).replace(/\s+/g, " ").trim()
+          : undefined,
+    },
+  };
+}
+
+export function describeReport(report: FeedReport): string {
+  return [
+    `記事 ${report.parsed}件`,
+    `最新 ${report.newest ?? "日付なし"}`,
+    `HTTP ${report.status} ${report.contentType}`,
+    `URL ${report.finalUrl}`,
+  ].join(" / ");
 }
 
 function parseRssItems(
   xml: string,
   sourceName: string,
-  cutoff: Date,
-): RawTweet[] {
-  const items: RawTweet[] = [];
+): Array<{ item: RawTweet; dated: boolean }> {
+  const items: Array<{ item: RawTweet; dated: boolean }> = [];
   const itemPattern = "<(?:item|entry)[\\s>]([\\s\\S]*?)<\\/(?:item|entry)>";
   const itemRegex = new RegExp(itemPattern, "gi");
   let itemMatch: RegExpExecArray | null;
@@ -79,16 +125,18 @@ function parseRssItems(
       "";
 
     if (!title || !link) continue;
-    if (date && new Date(date) < cutoff) continue;
 
     const summary = stripHtml(desc).slice(0, 200);
     const text = summary ? title + "\n" + summary : title;
 
     items.push({
-      authorId: sourceName,
-      text,
-      createdAt: date ?? new Date().toISOString(),
-      url: link,
+      item: {
+        authorId: sourceName,
+        text,
+        createdAt: date ?? new Date().toISOString(),
+        url: link,
+      },
+      dated: date !== undefined,
     });
   }
 
@@ -113,7 +161,9 @@ function extractDate(block: string): string | undefined {
   const raw =
     extractTag(block, "pubDate") ??
     extractTag(block, "published") ??
-    extractTag(block, "updated");
+    extractTag(block, "updated") ??
+    // RSS 1.0（RDF）形式（時事通信・CNN Japan など）は日付を dc:date に入れる
+    extractTag(block, "dc:date");
   if (!raw) return undefined;
   const d = new Date(raw);
   return isNaN(d.getTime()) ? undefined : d.toISOString();

@@ -1,0 +1,40 @@
+name: Check Feeds
+
+# RSS フィードの健康診断。LINE には配信せず、API キーも使わない。
+# 0件のフィードがあるとき、原因（HTTP・転送先・中身・最新記事の日付）をログで確かめる。
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: '追加で確かめたいフィードURL（空白区切り・任意）'
+        required: false
+        default: ''
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'src/settings.ts'
+      - 'src/sources/rss-feeds.ts'
+      - 'src/check-feeds.ts'
+      - '.github/workflows/check-feeds.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - run: npm ci
+
+      # 入力はシェルに直接埋め込まず環境変数で渡す（スクリプト注入を防ぐ）
+      - run: npm run check-feeds -- $URLS
+        env:
+          URLS: ${{ inputs.urls }}

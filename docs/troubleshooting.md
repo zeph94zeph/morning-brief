@@ -53,6 +53,13 @@ Claude が失敗しても配信は止まらず、Gemini で作った版が届く
 | `not_in_channel` | BotアプリがチャンネルにいないBot | チャンネルで `/invite @あなたのBot名` を実行 |
 | `not_authed` / `invalid_auth` | `SLACK_BOT_TOKEN` が間違っているか期限切れ | api.slack.com → アプリ → OAuth & Permissions → Bot User OAuth Token を再コピー |
 
+### RSS
+
+| 症状 | 原因 | 対処 |
+|---|---|---|
+| ログに `[RSS] ○○: 0件（記事 N件 / 最新 …）` | 「最新」が何日も前ならフィードの更新停止。数日以内なら単にその日の投稿がないだけ | Actions の **Check Feeds** を手動実行して全フィードの状態を確認。止まっていれば `src/settings.ts` の URL を差し替える（「Run workflow」の欄に候補 URL を入れると一緒に確かめられる） |
+| `フィード取得失敗: HTTP 429` | 配信元のアクセス制限 | 続くようならそのフィードを外す |
+
 ### その他
 
 | 症状 | 原因 | 対処 |
