@@ -83,12 +83,16 @@ async function research(
         fallbacks: "default",
         system: CLAUDE_RESEARCH_SYSTEM,
         output_config: { effort: claude.effort },
+        // 検索のたびに API 内部で記事一式を読み直すため、キャッシュしないと
+        // 入力トークンが検索回数ぶん積み上がる（初回実行で約150万トークン）。
+        // キャッシュがあれば2回目以降の読み直しは通常の1/20の料金になる。
+        cache_control: { type: "ephemeral" },
         tools,
         messages,
       })
       .finalMessage();
 
-    logUsage("調査", msg);
+    logUsage("調査", msg, settings);
     assertFinished(msg);
     memoParts.push(collectText(msg));
 
@@ -139,7 +143,7 @@ async function format(
     })
     .finalMessage();
 
-  logUsage("整形", msg);
+  logUsage("整形", msg, settings);
   assertFinished(msg);
 
   try {
@@ -232,12 +236,25 @@ function assertFinished(msg: BetaMessage): void {
   }
 }
 
-/** クレジットの減り方を追えるように、トークン数と検索回数を毎回出す */
-function logUsage(step: string, msg: BetaMessage): void {
+/** クレジットの減り方を追えるように、トークン数・検索回数・概算費用を毎回出す */
+function logUsage(step: string, msg: BetaMessage, settings: Settings): void {
   const u = msg.usage;
+  const cacheWrite = u.cache_creation_input_tokens ?? 0;
+  const cacheRead = u.cache_read_input_tokens ?? 0;
   const searches = u.server_tool_use?.web_search_requests ?? 0;
+  const p = settings.claude.pricing;
+  const usd =
+    (u.input_tokens * p.inputPerMTok +
+      cacheWrite * p.cacheWritePerMTok +
+      cacheRead * p.cacheReadPerMTok +
+      u.output_tokens * p.outputPerMTok) /
+      1_000_000 +
+    searches * p.perWebSearch;
   console.info(
-    `→ [Claude ${step}] model=${msg.model} 入力 ${u.input_tokens} / 出力 ${u.output_tokens} トークン` +
-      (searches > 0 ? ` / 検索 ${searches}回` : ""),
+    `→ [Claude ${step}] model=${msg.model} 入力 ${u.input_tokens}` +
+      ` / キャッシュ書込 ${cacheWrite} / キャッシュ読込 ${cacheRead}` +
+      ` / 出力 ${u.output_tokens} トークン` +
+      (searches > 0 ? ` / 検索 ${searches}回` : "") +
+      ` / 概算 $${usd.toFixed(2)}`,
   );
 }

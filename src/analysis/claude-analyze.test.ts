@@ -30,6 +30,13 @@ const settings: Settings = {
     formatEffort: "medium",
     maxArticleChars: 10,
     maxWebSearches: 5,
+    pricing: {
+      inputPerMTok: 4,
+      cacheWritePerMTok: 5,
+      cacheReadPerMTok: 0.2,
+      outputPerMTok: 20,
+      perWebSearch: 0.01,
+    },
   },
   analysis: {
     urlSummaryModel: "gemini-2.5-flash",
@@ -105,6 +112,8 @@ describe("analyzeWithClaude", () => {
       expect.objectContaining({ type: "web_search_20260209", max_uses: 5 }),
     ]);
     expect(research.output_config).toEqual({ effort: "high" });
+    // 検索のたびに記事一式を読み直すので、キャッシュ必須（無いと費用が数倍になる）
+    expect(research.cache_control).toEqual({ type: "ephemeral" });
     expect(format.tools).toBeUndefined();
     expect(format.output_config.effort).toBe("medium");
     expect(format.output_config.format.type).toBe("json_schema");

@@ -30,6 +30,13 @@ const baseSettings: Settings = {
     formatEffort: "medium",
     maxArticleChars: 8000,
     maxWebSearches: 0,
+    pricing: {
+      inputPerMTok: 4,
+      cacheWritePerMTok: 5,
+      cacheReadPerMTok: 0.2,
+      outputPerMTok: 20,
+      perWebSearch: 0.01,
+    },
   },
   analysis: {
     urlSummaryModel: "gemini-2.5-flash",
