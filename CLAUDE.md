@@ -3,7 +3,9 @@
 RSSフィード（既定）またはXのホームタイムラインから24時間以内のニュースを収集し、
 Claude が記事本文を読みウェブ検索で裏付けを取って分析し、LINEに配信する自動配信ツール。
 Claude が失敗したら Gemini、それも失敗したら記事ベースの簡易版で配信する。
-GitHub Actions で毎朝 03:37 JST に実行される（`.github/workflows/daily-news.yml`）。
+毎朝 04:52 JST に Claude の Routine が GitHub Actions（`.github/workflows/daily-news.yml`）を
+手動実行（`source=routine`）で起動し、05:00 前後に届く。GitHub の schedule は数時間遅れるため予備として残し、
+直近6時間に配信済みなら何もしない。
 
 ## プロジェクト構造
 

@@ -1,12 +1,22 @@
 name: Morning Brief
 
+# 配信は毎朝 04:52 JST に Claude の Routine がこのワークフローを
+# workflow_dispatch（source=routine）で起動する。手動実行は待ち時間がほぼないので 05:00 前後に届く。
+# GitHub の schedule は数時間遅れる（実測 2〜6時間）ため予備として残し、
+# 当日分がすでに配信済みなら何もしない。
 on:
   workflow_dispatch:   # 手動実行ボタン
+    inputs:
+      source:
+        description: '起動元。routine のときは直近6時間に配信済みなら止める（手動実行は manual のままでよい）'
+        required: false
+        default: manual
   schedule:
-    - cron: '37 18 * * *'  # 毎日 03:37 JST（遅延込みで05:00前後に届く）
+    - cron: '37 18 * * *'  # 予備。03:37 JST 指定だが実際は 06〜08時台に始まることが多い
 
 permissions:
   contents: read
+  actions: read   # 配信済みかどうかを調べるため
 
 concurrency:
   group: morning-brief
@@ -17,16 +27,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      # 予備の schedule と Routine の起動が重なっても、二重に配信しない。
+      # 手動実行（source=manual）は確認せず必ず配信する。
+      - name: 直近6時間に配信済みか確認
+        id: guard
+        if: github.event_name == 'schedule' || inputs.source == 'routine'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -d '6 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          count=$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/daily-news.yml/runs" \
+            -f status=success -f created=">=$since" --jq '.total_count')
+          echo "直近6時間の成功した配信: ${count}件"
+          if [ "$count" -gt 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "当日分は配信済みのため、今回は何もしません。"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.guard.outputs.skip != 'true'
 
       - uses: actions/setup-node@v4
+        if: steps.guard.outputs.skip != 'true'
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
 
       - run: npm ci
+        if: steps.guard.outputs.skip != 'true'
 
       - run: npm start
+        if: steps.guard.outputs.skip != 'true'
         env:
           USE_RSS: 'true'
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
