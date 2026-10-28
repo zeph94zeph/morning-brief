@@ -13,7 +13,14 @@ const AI_SOURCE_PATTERNS = [
 
 const WORLD_SOURCE_PATTERNS = [/bbc/i, /cnn/i, /jiji/i];
 
-export function buildFallbackAnalysis(tweets: EnrichedTweet[]): Analysis {
+const DEFAULT_NOTICE =
+  "AI分析に失敗したため、RSS記事を新着順で簡易配信しています。";
+
+/** AI 分析が使えないときの簡易版。notice は先頭の項目に入れる「なぜ簡易版か」の説明 */
+export function buildFallbackAnalysis(
+  tweets: EnrichedTweet[],
+  notice: string = DEFAULT_NOTICE,
+): Analysis {
   const analysis: Analysis = {
     political_economic_news: [],
     world_news: [],
@@ -34,7 +41,7 @@ export function buildFallbackAnalysis(tweets: EnrichedTweet[]): Analysis {
     });
   }
 
-  addFallbackNotice(analysis);
+  addFallbackNotice(analysis, notice);
   return analysis;
 }
 
@@ -60,15 +67,11 @@ function splitTitleAndDetail(text: string): { title: string; detail: string } {
 
   return {
     title: title.slice(0, 120),
-    detail:
-      detail ||
-      "Claude と Gemini の分析がどちらも失敗したため、RSS記事を新着順で簡易配信しています。",
+    detail: detail || DEFAULT_NOTICE,
   };
 }
 
-function addFallbackNotice(analysis: Analysis): void {
-  const notice =
-    "Claude と Gemini の分析がどちらも失敗したため、RSS記事を新着順で簡易配信しています。";
+function addFallbackNotice(analysis: Analysis, notice: string): void {
   const buckets = [
     analysis.political_economic_news,
     analysis.world_news,

@@ -7,9 +7,8 @@ const LINE_API_URL = "https://api.line.me/v2/bot/message/broadcast";
 export async function postToLine(
     analysis: Analysis,
     config: Config,
-    notice?: string,
   ): Promise<void> {
-    const messages = buildMessages(analysis, notice);
+    const messages = buildMessages(analysis);
 
   for (const message of messages) {
         const res = await fetch(LINE_API_URL, {
@@ -38,10 +37,7 @@ function stripUrls(text: string): string {
     return text.replace(/https?:\/\/\S+/g, "").replace(/\s{2,}/g, " ").trim();
 }
 
-function buildMessages(
-  analysis: Analysis,
-  notice?: string,
-): Array<{ type: string; text: string }> {
+function buildMessages(analysis: Analysis): Array<{ type: string; text: string }> {
   const today = new Date().toLocaleDateString("ja-JP", {
     year: "numeric", month: "long", day: "numeric", weekday: "short",
     timeZone: "Asia/Tokyo",
@@ -49,7 +45,6 @@ function buildMessages(
 
   const lines: string[] = [];
   lines.push(`本日のモーニングブリーフ。${today}。`);
-  if (notice) lines.push(notice);
 
   const sections: Array<{ title: string; items: Analysis["political_economic_news"] }> = [
     { title: "世界のニュース",    items: analysis.world_news },

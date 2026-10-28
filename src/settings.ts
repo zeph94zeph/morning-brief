@@ -29,9 +29,12 @@ export interface Settings {
     maxSummaryChars: number;
     inputCharsMultiplier: number;
   };
-  /** 本命の分析エンジン。失敗したときだけ analysis（Gemini）に切り替わる */
+  /** 分析エンジン（Claude）。Gemini は claude.enabled=false にしたときだけ使う代替案 */
   claude: {
-    /** false にすると Claude を使わず最初から Gemini で分析する（ANTHROPIC_API_KEY 未設定時も同じ） */
+    /**
+     * true: Claude だけで分析する。失敗した日は記事の見出しだけの簡易版になる（Gemini には切り替えない）
+     * false: 代替案の Gemini で分析する（Claude のクレジットが切れたときなど。GEMINI_API_KEY が要る）
+     */
     enabled: boolean;
     model: string;
     /** 考える深さ。low / medium / high / xhigh / max。上げるほど精度もコストも上がる */
@@ -51,7 +54,7 @@ export interface Settings {
       perWebSearch: number;
     };
   };
-  /** Gemini 設定。Claude が失敗したときの予備ルートでだけ使う */
+  /** Gemini 設定。代替案（claude.enabled=false）のときだけ使う */
   analysis: {
     urlSummaryModel: string;
     trendAnalysisModel: string;
