@@ -36,8 +36,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           since=$(date -u -d '6 hours ago' +%Y-%m-%dT%H:%M:%SZ)
-          count=$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/daily-news.yml/runs" \
-            -f status=success -f created=">=$since" --jq '.total_count')
+          # 確認自体に失敗したときは配信を止めず、配信する側に倒す（二重配信の方が配信なしより害が小さい）
+          if ! count=$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/daily-news.yml/runs" \
+            -f status=success -f created=">=$since" --jq '.total_count'); then
+            echo "::warning::配信済みかどうかを確認できなかったため、配信します"
+            count=0
+          fi
           echo "直近6時間の成功した配信: ${count}件"
           if [ "$count" -gt 0 ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
