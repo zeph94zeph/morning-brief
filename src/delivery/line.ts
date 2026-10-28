@@ -52,8 +52,8 @@ function buildMessages(
   if (notice) lines.push(notice);
 
   const sections: Array<{ title: string; items: Analysis["political_economic_news"] }> = [
-    { title: "日本の政治・経済",  items: analysis.political_economic_news },
     { title: "世界のニュース",    items: analysis.world_news },
+    { title: "日本の政治・経済",  items: analysis.political_economic_news },
     { title: "AIニュース",        items: analysis.ai_news },
   ];
 
