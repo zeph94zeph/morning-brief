@@ -6,9 +6,13 @@ loadDotenv();
 
 const baseSchema = z.object({
   JINA_API_KEY: z.string().min(1),
-  GEMINI_API_KEY: z.string().min(1),
-  // 未設定なら Claude を飛ばして Gemini で分析する（空文字は未設定扱い）
+  // 分析は Claude が本命。未設定だと毎日簡易版になる（空文字は未設定扱い）
   ANTHROPIC_API_KEY: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : undefined)),
+  // 代替案の Gemini を使うとき（settings.claude.enabled=false）だけ必要
+  GEMINI_API_KEY: z
     .string()
     .optional()
     .transform((v) => (v ? v : undefined)),

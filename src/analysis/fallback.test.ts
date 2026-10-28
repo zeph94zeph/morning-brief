@@ -41,7 +41,13 @@ describe("buildFallbackAnalysis", () => {
     const analysis = buildFallbackAnalysis(tweets);
     const firstDetail = analysis.political_economic_news[0]?.details[0];
 
-    expect(firstDetail).toContain("Gemini");
     expect(firstDetail).toContain("簡易配信");
+  });
+
+  it("uses the notice passed by the caller", () => {
+    const analysis = buildFallbackAnalysis(tweets, "Claude の分析に失敗しました。");
+    const firstDetail = analysis.political_economic_news[0]?.details[0];
+
+    expect(firstDetail).toBe("Claude の分析に失敗しました。");
   });
 });

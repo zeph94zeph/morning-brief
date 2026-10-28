@@ -36,42 +36,62 @@ async function main() {
   const urlContents = await fetchUrlContents(tweets, config, settings);
   console.info(`→ 本文取得済みURL: ${urlContents.size}件`);
 
-  // 本命は Claude。失敗（クレジット切れ・障害など）したら Gemini、それも失敗したら記事ベースの簡易版
-  let analysis: Analysis | undefined;
-  let notice: string | undefined;
-  if (config.ANTHROPIC_API_KEY && settings.claude.enabled) {
-    analysis = await analyzeWithClaude(
-      tweets,
-      urlContents,
-      config.ANTHROPIC_API_KEY,
-      settings,
-    ).catch((error: unknown) => {
-      console.warn("[Claude] 分析に失敗したため、Gemini で分析します。");
-      console.warn("[Claude] fallback reason:", error);
-      notice =
-        "本日は Claude の分析に失敗したため、Gemini で作成しました。" +
-        "続く場合は Anthropic のクレジット残高を確認してください。";
-      return undefined;
-    });
-  } else {
-    console.info(
-      "[3/4] ANTHROPIC_API_KEY 未設定または claude.enabled=false のため Gemini で分析します",
-    );
-  }
-
-  analysis ??= await analyzeWithGemini(tweets, urlContents, config);
+  // 分析は Claude だけで行い、失敗したら記事ベースの簡易版を届ける（Gemini には自動で切り替えない）。
+  // Gemini は代替案。src/settings.ts の claude.enabled を false にしたときだけ使う。
+  const analysis = settings.claude.enabled
+    ? await analyzeWithClaudeOrSimple(tweets, urlContents, config)
+    : await analyzeWithGemini(tweets, urlContents, config);
 
   console.info("[4/4] LINE へ投稿中...");
-  await postToLine(analysis, config, notice);
+  await postToLine(analysis, config);
 
   console.info("すべての処理が完了しました");
 }
 
+async function analyzeWithClaudeOrSimple(
+  tweets: RawTweet[],
+  urlContents: Map<string, string>,
+  config: Config,
+): Promise<Analysis> {
+  try {
+    if (!config.ANTHROPIC_API_KEY) {
+      throw new UserFacingError(
+        "ANTHROPIC_API_KEY が未設定です。GitHub Secrets に登録するか、" +
+          "Gemini で分析する場合は src/settings.ts の claude.enabled を false にしてください。",
+      );
+    }
+    return await analyzeWithClaude(
+      tweets,
+      urlContents,
+      config.ANTHROPIC_API_KEY,
+      settings,
+    );
+  } catch (error: unknown) {
+    console.warn("[Claude] 分析に失敗したため、RSS記事ベースの簡易版を配信します。");
+    console.warn("[Claude] fallback reason:", error);
+    return buildFallbackAnalysis(
+      tweets.map((t) => ({
+        ...t,
+        enrichedText: t.quotedText ? `${t.text}\n${t.quotedText}` : t.text,
+      })),
+      "本日は Claude の分析に失敗したため、記事の見出しだけの簡易版です。" +
+        "続く場合は Anthropic のクレジット残高を確認してください。",
+    );
+  }
+}
+
+/** 代替案。settings.claude.enabled=false のときだけ使う */
 async function analyzeWithGemini(
   tweets: RawTweet[],
   urlContents: Map<string, string>,
   config: Config,
 ): Promise<Analysis> {
+  console.info("[3/4] settings.claude.enabled=false のため Gemini（代替案）で分析します");
+  if (!config.GEMINI_API_KEY) {
+    throw new UserFacingError(
+      "Gemini で分析する設定（claude.enabled=false）ですが、GEMINI_API_KEY が未設定です。",
+    );
+  }
   const enrichedTweets = await summarizeUrls(
     tweets,
     urlContents,
@@ -84,7 +104,10 @@ async function analyzeWithGemini(
         "[Gemini] 分析に失敗したため、RSS記事ベースの簡易版を配信します。",
       );
       console.warn("[Gemini] fallback reason:", error);
-      return buildFallbackAnalysis(enrichedTweets);
+      return buildFallbackAnalysis(
+        enrichedTweets,
+        "本日は Gemini の分析に失敗したため、記事の見出しだけの簡易版です。",
+      );
     },
   );
 }

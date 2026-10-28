@@ -28,16 +28,17 @@
 
 ### Claude
 
-Claude が失敗しても配信は止まらず、Gemini で作った版が届く（冒頭に「本日は Claude の分析に失敗したため…」と入る）。
+Claude が失敗しても配信は止まらず、記事の見出しだけの簡易版が届く（最初の項目に「本日は Claude の分析に失敗したため…」と入る）。
+Gemini には自動で切り替えない。クレジットが切れて当面 Claude を使わないなら、`src/settings.ts` の `claude.enabled` を `false` にすると Gemini（代替案）で分析する。
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
-| LINE に「Claude の分析に失敗したため」と出る | クレジット残高切れ・期限切れ、または `ANTHROPIC_API_KEY` の誤り | Claude Console（platform.claude.com）の Billing で残高と有効期限を確認。クレジットを購入するか、`src/settings.ts` の `claude.enabled` を `false` にして Gemini に戻す |
+| LINE に「Claude の分析に失敗したため」と出る | クレジット残高切れ・期限切れ、または `ANTHROPIC_API_KEY` の誤り | Claude Console（platform.claude.com）の Billing で残高と有効期限を確認。クレジットを購入するか、`src/settings.ts` の `claude.enabled` を `false` にして Gemini（代替案）に切り替える |
 | `401 authentication_error` | APIキーの誤り・失効 | Claude Console で再発行し、GitHub Secrets の `ANTHROPIC_API_KEY` を更新 |
 | 費用が想定より多い | 記事本文・検索の量が多い | ログの `[Claude 調査]` 行でトークン数と検索回数を確認。`claude.maxWebSearches` / `claude.maxArticleChars` / `urlContent.maxUrls` を下げる |
 | `web search is not enabled` | 組織の設定でウェブ検索が無効 | Claude Console の設定で有効にするか、`claude.maxWebSearches` を `0` に |
 
-### Gemini（予備）
+### Gemini（代替案。claude.enabled=false のときだけ）
 
 | 症状 | 原因 | 対処 |
 |---|---|---|

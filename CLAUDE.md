@@ -2,7 +2,8 @@
 
 RSSフィード（既定）またはXのホームタイムラインから24時間以内のニュースを収集し、
 Claude が記事本文を読みウェブ検索で裏付けを取って分析し、LINEに配信する自動配信ツール。
-Claude が失敗したら Gemini、それも失敗したら記事ベースの簡易版で配信する。
+分析は Claude だけで行い、失敗した日は記事ベースの簡易版を配信する（Gemini には自動で切り替えない）。
+Gemini は代替案で、`src/settings.ts` の `claude.enabled` を `false` にしたときだけ使う。
 毎朝 04:52 JST に Claude の Routine が GitHub Actions（`.github/workflows/daily-news.yml`）を
 手動実行（`source=routine`）で起動し、05:00 前後に届く。GitHub の schedule は数時間遅れるため予備として残し、
 直近6時間に配信済みなら何もしない。
@@ -22,9 +23,9 @@ src/
 │   └── url-content.ts   # Jina Reader で URL 本文並列取得
 ├── analysis/
 │   ├── claude-analyze.ts # 本命。Claude が本文を読み検索で裏取り → JSON に整形（2段階）
-│   ├── url-summarizer.ts # 予備ルート: Gemini Flash で各URL要約
-│   ├── analyze.ts       # 予備ルート: Gemini で最終トレンド分析 + ツールアドバイザー
-│   ├── fallback.ts      # Claude も Gemini も落ちたときの記事ベース簡易分析
+│   ├── url-summarizer.ts # 代替案（claude.enabled=false）: Gemini Flash で各URL要約
+│   ├── analyze.ts       # 代替案（claude.enabled=false）: Gemini でトレンド分析 + ツールアドバイザー
+│   ├── fallback.ts      # AI 分析が失敗したときの記事ベース簡易分析
 │   ├── schema.ts        # zod スキーマ（SSoT）
 │   └── prompts.ts       # プロンプト（Gemini 用2つ + Claude 用2つ）
 ├── delivery/
@@ -51,7 +52,7 @@ npm run typecheck              # tsc --noEmit
 
 1. `src/main.ts` — 4ステップの全体像
 2. `src/sources/rss-feeds.ts` — ソース元（X ルートを見たいときは `x-timeline.ts`）
-3. `src/analysis/claude-analyze.ts` — 処理（Gemini の予備ルートは `analyze.ts`）
+3. `src/analysis/claude-analyze.ts` — 処理（代替案の Gemini は `analyze.ts`）
 4. `src/delivery/line.ts` — 届ける先
 5. `src/settings.ts` — 設定を変えたいとき
 
@@ -62,8 +63,8 @@ npm run typecheck              # tsc --noEmit
 | シークレット名 | 用途 |
 |---|---|
 | `JINA_API_KEY` | Jina Reader。**401（失効）・402（無料枠切れ）のときは鍵なしで引き直すので、本文取得は止まらない** |
-| `ANTHROPIC_API_KEY` | Claude（本命の分析）。**未設定・失敗時は Gemini で配信が続く** |
-| `GEMINI_API_KEY` | Gemini（Claude が失敗したときの予備） |
+| `ANTHROPIC_API_KEY` | Claude（分析）。**未設定・失敗時はその日だけ記事の見出しだけの簡易版になる** |
+| `GEMINI_API_KEY` | Gemini（代替案。`claude.enabled=false` のときだけ使う。それ以外は未設定でもよい） |
 | `LINE_CHANNEL_ACCESS_TOKEN` | LINE Messaging API のチャネルアクセストークン |
 | `LINE_USER_ID` | 配信先ユーザーID（`LINE_USER_ID_2` は任意） |
 
