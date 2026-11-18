@@ -4,6 +4,7 @@ RSSフィード（既定）またはXのホームタイムラインから24時�
 Claude が記事本文を読みウェブ検索で裏付けを取って分析し、LINEに配信する自動配信ツール。
 分析は Claude だけで行い、失敗した日は記事ベースの簡易版を配信する（Gemini には自動で切り替えない）。
 Gemini は代替案で、`src/settings.ts` の `claude.enabled` を `false` にしたときだけ使う。
+**2026-11-20 に Claude の無料クレジットが切れるため、現在は `claude.enabled=false`（Gemini で運用中）。**
 毎朝 04:52 JST に Claude の Routine が GitHub Actions（`.github/workflows/daily-news.yml`）を
 手動実行（`source=routine`）で起動し、05:00 前後に届く。GitHub の schedule は数時間遅れるため予備として残し、
 直近6時間に配信済みなら何もしない。

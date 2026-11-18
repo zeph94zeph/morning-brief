@@ -90,15 +90,18 @@ export const settings: Settings = {
   },
   urlContent: {
     enabled: true,
-    // Claude に本文ごと読ませる記事数。ソースごとに新しい順で1件ずつ順番に選ぶ（18フィード×2件）
-    maxUrls: 36,
+    // 本文を取りに行く記事数。ソースごとに新しい順で1件ずつ順番に選ぶ。
+    // Gemini 運用中は1件ごとに Gemini Flash で要約するので、無料枠の回数制限に収まるよう12件にしている
+    // （Claude に戻すなら36件が目安）
+    maxUrls: 12,
     timeoutMs: 10_000,
     parallelism: 10,
     maxSummaryChars: 200,
     inputCharsMultiplier: 20,
   },
   claude: {
-    enabled: true,
+    // 2026-11-20 に無料クレジットが切れるため、無料の Gemini（代替案）で運用中。Claude に戻すなら true
+    enabled: false,
     // Opus 5.5 だと1日 約$1.5〜2。Sonnet 5.5 は約半分。品質を見て戻す場合は "claude-opus-5-5" と pricing を戻す
     model: "claude-sonnet-5-5",
     effort: "high",
