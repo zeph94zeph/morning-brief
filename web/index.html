@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#111827">
+<title>モーニングブリーフ</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #111827; --muted: #6b7280;
+    --line: #e5e7eb; --accent: #2563eb; --accent-text: #ffffff; --now: #eff6ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f17; --card: #151b26; --text: #e5e7eb; --muted: #9ca3af;
+      --line: #263042; --accent: #60a5fa; --accent-text: #0b0f17; --now: #1b2a44;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.7 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    padding-bottom: 168px;
+  }
+  header { padding: 20px 16px 8px; }
+  h1 { font-size: 20px; margin: 0; }
+  #date { color: var(--muted); font-size: 14px; }
+  main { padding: 0 16px; max-width: 720px; margin: 0 auto; }
+  h2 { font-size: 15px; color: var(--muted); margin: 24px 0 8px; letter-spacing: .04em; }
+  .seg {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; margin: 8px 0; cursor: pointer;
+  }
+  .seg.now { background: var(--now); border-color: var(--accent); }
+  .seg .t { font-weight: 700; }
+  .seg .d { color: var(--text); opacity: .85; margin-top: 4px; }
+  .seg .s { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  #status { padding: 16px; color: var(--muted); }
+  .bar {
+    position: fixed; left: 0; right: 0; bottom: 0; background: var(--card);
+    border-top: 1px solid var(--line); padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  .controls { display: flex; gap: 12px; justify-content: center; align-items: center; }
+  button {
+    font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 999px; width: 56px; height: 56px; font-size: 22px; cursor: pointer;
+  }
+  #play { width: 72px; height: 72px; background: var(--accent); color: var(--accent-text); border: none; font-size: 28px; }
+  .speed { display: flex; gap: 8px; justify-content: center; align-items: center; margin-top: 8px; color: var(--muted); font-size: 14px; }
+  .speed input { width: 160px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>モーニングブリーフ</h1>
+  <div id="date"></div>
+</header>
+<main id="list"><div id="status">読み込み中…</div></main>
+
+<div class="bar">
+  <div class="controls">
+    <button id="prev" aria-label="前のニュース">⏮</button>
+    <button id="play" aria-label="再生">▶</button>
+    <button id="next" aria-label="次のニュース">⏭</button>
+  </div>
+  <div class="speed">
+    <label for="rate">速さ</label>
+    <input id="rate" type="range" min="0.7" max="1.8" step="0.1" value="1.1">
+    <span id="rateLabel">1.1x</span>
+  </div>
+</div>
+
+<script>
+// brief.json は毎朝 GitHub Actions が書き出す（src/delivery/reader.ts）。
+// 読み上げは端末内蔵の音声（Web Speech API）を使うので料金はかからない。
+const SECTIONS = [
+  ["world_news", "世界のニュース"],
+  ["political_economic_news", "日本の政治・経済"],
+  ["ai_news", "AIニュース"],
+];
+
+const synth = window.speechSynthesis;
+const segs = [];         // { el, text }
+let current = 0;
+let playing = false;
+let voice = null;
+
+const $ = (id) => document.getElementById(id);
+const rateInput = $("rate");
+
+try {
+  const saved = localStorage.getItem("rate");
+  if (saved) rateInput.value = saved;
+} catch {}
+$("rateLabel").textContent = `${rateInput.value}x`;
+
+function pickVoice() {
+  const ja = synth.getVoices().filter((v) => v.lang && v.lang.startsWith("ja"));
+  voice = ja.find((v) => /google/i.test(v.name)) || ja[0] || null;
+}
+pickVoice();
+if (synth) synth.onvoiceschanged = pickVoice;
+
+// spoken は読み上げだけに付ける前置き（「世界のニュース。」など）
+function addSeg(container, title, details = [], sources = [], spoken = "") {
+  const el = document.createElement("div");
+  el.className = "seg";
+  el.innerHTML = '<div class="t"></div><div class="d"></div><div class="s"></div>';
+  el.querySelector(".t").textContent = title;
+  el.querySelector(".d").textContent = details.join(" ");
+  el.querySelector(".s").textContent = sources.length ? `出典：${sources.join("、")}` : "";
+  const index = segs.length;
+  el.addEventListener("click", () => { current = index; start(); });
+  container.appendChild(el);
+  segs.push({ el, text: spoken + [title, ...details].join("。") });
+}
+
+function render(data) {
+  const a = data.analysis;
+  const d = new Date(data.generatedAt);
+  const dateText = d.toLocaleDateString("ja-JP", {
+    year: "numeric", month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Tokyo",
+  });
+  $("date").textContent = dateText;
+  const list = $("list");
+  list.innerHTML = "";
+
+  for (const [key, label] of SECTIONS) {
+    const items = a[key] || [];
+    if (!items.length) continue;
+    const h = document.createElement("h2");
+    h.textContent = label;
+    list.appendChild(h);
+    items.forEach((item, i) =>
+      addSeg(list, item.title, item.details, item.source_names || [], i === 0 ? `${label}。` : ""));
+  }
+
+  const tools = a.tool_recommendations || [];
+  if (tools.length) {
+    const h = document.createElement("h2");
+    h.textContent = "AIツール";
+    list.appendChild(h);
+    for (const r of tools) {
+      const head = r.category === "watched" ? `${r.tool}。${r.verdict}` : `新規発見、${r.tool}`;
+      addSeg(list, head, [r.reason], [], r === tools[0] ? "AIツール。" : "");
+    }
+  }
+}
+
+function highlight() {
+  segs.forEach((s, i) => s.el.classList.toggle("now", i === current));
+  segs[current]?.el.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+// 1ニュースずつ話す。長文を一度に渡すと Android の Chrome で途中で止まることがあるため。
+function speakCurrent() {
+  if (current >= segs.length) { stop(); current = 0; return; }
+  highlight();
+  const u = new SpeechSynthesisUtterance(segs[current].text);
+  u.lang = "ja-JP";
+  if (voice) u.voice = voice;
+  u.rate = Number(rateInput.value);
+  u.onend = () => { if (playing) { current += 1; speakCurrent(); } };
+  synth.speak(u);
+}
+
+function start() {
+  if (!synth) { alert("このブラウザは読み上げに対応していません"); return; }
+  synth.cancel();
+  playing = true;
+  $("play").textContent = "⏸";
+  $("play").setAttribute("aria-label", "一時停止");
+  speakCurrent();
+}
+
+function stop() {
+  playing = false;
+  synth && synth.cancel();
+  $("play").textContent = "▶";
+  $("play").setAttribute("aria-label", "再生");
+}
+
+$("play").addEventListener("click", () => (playing ? stop() : start()));
+$("next").addEventListener("click", () => { current = Math.min(current + 1, segs.length - 1); playing ? start() : highlight(); });
+$("prev").addEventListener("click", () => { current = Math.max(current - 1, 0); playing ? start() : highlight(); });
+rateInput.addEventListener("input", () => {
+  $("rateLabel").textContent = `${rateInput.value}x`;
+  try { localStorage.setItem("rate", rateInput.value); } catch {}
+});
+rateInput.addEventListener("change", () => { if (playing) start(); });
+
+fetch("brief.json", { cache: "no-store" })
+  .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(render)
+  .catch(() => { $("status").textContent = "今日のブリーフはまだありません。"; });
+</script>
+</body>
+</html>

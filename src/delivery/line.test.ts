@@ -67,3 +67,27 @@ describe("postToLine", () => {
     expect(japan).toBeLessThan(ai);
   });
 });
+
+describe("postToLine の読み上げリンク", () => {
+  it("readerUrl を渡すと冒頭に読み上げページのリンクを載せる", async () => {
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) =>
+      Promise.resolve(new Response("{}")),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await postToLine(
+      {
+        political_economic_news: [],
+        world_news: [item("海外B", [])],
+        ai_news: [],
+        tool_recommendations: [],
+      },
+      config,
+      "https://example.github.io/brief/",
+    );
+
+    const body = JSON.parse(fetchMock.mock.calls[0]![1]!.body as string);
+    const lines: string[] = body.messages[0].text.split("\n");
+    expect(lines[1]).toBe("▶ 読み上げ：https://example.github.io/brief/");
+  });
+});

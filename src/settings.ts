@@ -67,6 +67,20 @@ export interface Settings {
     feeds: RssFeed[];
   };
   toolAdvisor: ToolAdvisorSettings;
+  /** 配信文の長さ。各カテゴリ3件はスキーマで固定 */
+  brief: {
+    /** 1ニュースあたりの詳細の項目数（1〜2） */
+    detailsPerItem: number;
+    /** 詳細1項目あたりの目安文字数 */
+    charsPerDetail: number;
+  };
+  /** スマホで読み上げるページ（GitHub Pages） */
+  reader: {
+    /** LINE の冒頭に載せるページの URL。空にすると載せない */
+    url: string;
+    /** 当日分の brief.json を書き出すフォルダ（ワークフローがここをページとして公開する） */
+    outputDir: string;
+  };
 }
 
 export const settings: Settings = {
@@ -85,17 +99,19 @@ export const settings: Settings = {
   },
   claude: {
     enabled: true,
-    model: "claude-opus-5-5",
+    // Opus 5.5 だと1日 約$1.5〜2。Sonnet 5.5 は約半分。品質を見て戻す場合は "claude-opus-5-5" と pricing を戻す
+    model: "claude-sonnet-5-5",
     effort: "high",
     formatEffort: "medium",
     maxArticleChars: 8000,
     maxWebSearches: 10,
-    // claude-opus-5-5 の単価（2026年10月時点）。キャッシュ書込は5分保持の料金
+    // claude-sonnet-5-5 の単価（2026年11月時点）。キャッシュ書込は5分保持の料金
+    // （Opus 5.5 は 入力4 / 書込5 / 読込0.2 / 出力20）
     pricing: {
-      inputPerMTok: 4,
-      cacheWritePerMTok: 5,
+      inputPerMTok: 2,
+      cacheWritePerMTok: 2.5,
       cacheReadPerMTok: 0.2,
-      outputPerMTok: 20,
+      outputPerMTok: 10,
       perWebSearch: 0.01,
     },
   },
@@ -105,6 +121,14 @@ export const settings: Settings = {
     temperature: 0,
     maxGeminiAttempts: 6,
     geminiRetryDelayMs: 30_000,
+  },
+  brief: {
+    detailsPerItem: 1,
+    charsPerDetail: 100,
+  },
+  reader: {
+    url: "https://zeph94zeph.github.io/morning-brief/",
+    outputDir: "site",
   },
   toolAdvisor: {
     enabled: true,

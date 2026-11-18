@@ -57,6 +57,8 @@ const mockSettings: Settings = {
     geminiRetryDelayMs: 30_000,
   },
   rss: { feeds: [] },
+  brief: { detailsPerItem: 1, charsPerDetail: 100 },
+  reader: { url: "", outputDir: "site" },
   toolAdvisor: {
     enabled: false,
     maxRecommendations: 5,

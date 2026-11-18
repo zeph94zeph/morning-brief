@@ -136,6 +136,7 @@ async function format(
         {
           role: "user",
           content:
+            `【文字数】${detailRule(settings)}\n\n` +
             `【AIツール判断の設定】\n${toolAdvisorContext}\n\n` +
             `【調査メモ】\n<memo>\n${memo}\n</memo>`,
         },
@@ -147,13 +148,24 @@ async function format(
   assertFinished(msg);
 
   try {
-    return AnalysisSchema.parse(clampCounts(JSON.parse(collectText(msg))));
+    return AnalysisSchema.parse(
+      clampCounts(JSON.parse(collectText(msg)), settings.brief.detailsPerItem),
+    );
   } catch (cause) {
     throw new UserFacingError(
       "Claude の応答をパースできませんでした。再実行してみてください。",
       { cause },
     );
   }
+}
+
+/** 配信文の長さの指示（settings.brief から作る） */
+export function detailRule(settings: Settings): string {
+  const { detailsPerItem, charsPerDetail } = settings.brief;
+  return (
+    `details は最大${detailsPerItem}項目、各項目${charsPerDetail}文字程度。` +
+    "背景や経緯は削り、何が起きたか・なぜ重要かだけを書く"
+  );
 }
 
 /** 記事一覧を Claude に渡す形にする。本文が取れた記事は本文ごと渡す */
@@ -203,14 +215,14 @@ function findBodies(tweet: RawTweet, urlContents: Map<string, string>): string[]
  * 構造化出力では件数の上限を指定できないため、多すぎた分はここで切る。
  * 1件多いだけで Gemini に落ちるのはもったいない。
  */
-function clampCounts(raw: unknown): unknown {
+function clampCounts(raw: unknown, maxDetails: number): unknown {
   const data = raw as Record<string, unknown>;
   for (const key of ["political_economic_news", "world_news", "ai_news"]) {
     const items = data[key];
     if (!Array.isArray(items)) continue;
     data[key] = items.slice(0, 3).map((item: Record<string, unknown>) => ({
       ...item,
-      details: Array.isArray(item.details) ? item.details.slice(0, 2) : item.details,
+      details: Array.isArray(item.details) ? item.details.slice(0, maxDetails) : item.details,
     }));
   }
   return data;

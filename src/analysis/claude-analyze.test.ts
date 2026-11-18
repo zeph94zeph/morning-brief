@@ -46,6 +46,8 @@ const settings: Settings = {
     geminiRetryDelayMs: 0,
   },
   rss: { feeds: [] },
+  brief: { detailsPerItem: 1, charsPerDetail: 100 },
+  reader: { url: "", outputDir: "site" },
   toolAdvisor: {
     enabled: false,
     maxRecommendations: 5,
@@ -169,7 +171,8 @@ describe("analyzeWithClaude", () => {
 
     const result = await analyzeWithClaude(tweets, urlContents, "key", settings);
     expect(result.world_news).toHaveLength(3);
-    expect(result.world_news[0]!.details).toEqual(["a", "b"]);
+    // settings.brief.detailsPerItem（テストでは1）まで切る
+    expect(result.world_news[0]!.details).toEqual(["a"]);
   });
 
   it("整形結果が JSON でなければ UserFacingError にする", async () => {
