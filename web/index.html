@@ -37,6 +37,10 @@
   .seg .d { color: var(--text); opacity: .85; margin-top: 4px; }
   .seg .s { color: var(--muted); font-size: 13px; margin-top: 4px; }
   #status { padding: 16px; color: var(--muted); }
+  .note {
+    margin: 8px 16px; padding: 12px 14px; border-radius: 12px;
+    background: var(--now); border: 1px solid var(--accent); font-size: 15px;
+  }
   .bar {
     position: fixed; left: 0; right: 0; bottom: 0; background: var(--card);
     border-top: 1px solid var(--line); padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
@@ -56,6 +60,7 @@
   <h1>モーニングブリーフ</h1>
   <div id="date"></div>
 </header>
+<div id="note" class="note" hidden></div>
 <main id="list"><div id="status">読み込み中…</div></main>
 
 <div class="bar">
@@ -95,12 +100,17 @@ try {
 } catch {}
 $("rateLabel").textContent = `${rateInput.value}x`;
 
+// LINE などのアプリ内ブラウザ（Android の WebView）には読み上げ機能がない。
+// その場合もニュースは表示し、Chrome で開くよう案内する。
+const canSpeak = Boolean(synth && typeof SpeechSynthesisUtterance !== "undefined");
+
 function pickVoice() {
+  if (!canSpeak) return;
   const ja = synth.getVoices().filter((v) => v.lang && v.lang.startsWith("ja"));
   voice = ja.find((v) => /google/i.test(v.name)) || ja[0] || null;
 }
 pickVoice();
-if (synth) synth.onvoiceschanged = pickVoice;
+if (canSpeak) synth.onvoiceschanged = pickVoice;
 
 // spoken は読み上げだけに付ける前置き（「世界のニュース。」など）
 function addSeg(container, title, details = [], sources = [], spoken = "") {
@@ -166,7 +176,7 @@ function speakCurrent() {
 }
 
 function start() {
-  if (!synth) { alert("このブラウザは読み上げに対応していません"); return; }
+  if (!canSpeak) { showNoSpeech(); return; }
   synth.cancel();
   playing = true;
   $("play").textContent = "⏸";
@@ -176,7 +186,7 @@ function start() {
 
 function stop() {
   playing = false;
-  synth && synth.cancel();
+  if (canSpeak) synth.cancel();
   $("play").textContent = "▶";
   $("play").setAttribute("aria-label", "再生");
 }
@@ -190,10 +200,21 @@ rateInput.addEventListener("input", () => {
 });
 rateInput.addEventListener("change", () => { if (playing) start(); });
 
+function showNoSpeech() {
+  const note = $("note");
+  note.hidden = false;
+  note.textContent =
+    "このブラウザでは読み上げできません。右上のメニューから「ブラウザで開く」（Chrome）を選んでください。";
+}
+if (!canSpeak) showNoSpeech();
+
 fetch("brief.json", { cache: "no-store" })
   .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(render)
-  .catch(() => { $("status").textContent = "今日のブリーフはまだありません。"; });
+  .catch(() => {
+    const status = $("status");
+    if (status) status.textContent = "今日のブリーフを読み込めませんでした。時間をおいて開き直してください。";
+  });
 </script>
 </body>
 </html>

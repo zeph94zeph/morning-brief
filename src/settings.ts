@@ -130,7 +130,8 @@ export const settings: Settings = {
     charsPerDetail: 100,
   },
   reader: {
-    url: "https://zeph94zeph.github.io/morning-brief/",
+    // openExternalBrowser=1 で LINE 内ブラウザではなく Chrome などで開く（LINE 内ブラウザは読み上げ不可）
+    url: "https://zeph94zeph.github.io/morning-brief/?openExternalBrowser=1",
     outputDir: "site",
   },
   toolAdvisor: {
