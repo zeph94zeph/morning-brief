@@ -26,6 +26,8 @@ jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      skip: ${{ steps.guard.outputs.skip }}
     steps:
       # 予備の schedule と Routine の起動が重なっても、二重に配信しない。
       # 手動実行（source=manual）は確認せず必ず配信する。
@@ -69,3 +71,32 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+
+      # 読み上げページ（web/index.html + 当日の brief.json）を Pages 用にまとめる
+      - name: 読み上げページを用意
+        if: steps.guard.outputs.skip != 'true'
+        run: cp web/index.html site/
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          path: site
+
+  # 読み上げページを GitHub Pages に公開する。
+  # LINE への配信は終わっているので、ここが失敗しても実行全体は成功のままにする
+  # （失敗扱いになると、予備の schedule が「未配信」と判断して二重配信してしまう）。
+  publish:
+    needs: run
+    if: needs.run.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

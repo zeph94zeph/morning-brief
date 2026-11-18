@@ -10,6 +10,7 @@ import type { Settings, ToolAdvisorSettings } from "../settings.js";
 import type { EnrichedTweet } from "../types.js";
 import { UserFacingError } from "../utils/errors.js";
 import { cleanText } from "../utils/post-optimizer.js";
+import { detailRule } from "./claude-analyze.js";
 
 export async function analyzeTrends(
   tweets: EnrichedTweet[],
@@ -32,7 +33,8 @@ export async function analyzeTrends(
   const toolAdvisorContext = buildToolAdvisorContext(settings.toolAdvisor);
   const prompt = TREND_ANALYSIS_PROMPT
     .replace("{json_data}", JSON.stringify(tweetsForPrompt, null, 2))
-    .replace("{tool_advisor_context}", toolAdvisorContext);
+    .replace("{tool_advisor_context}", toolAdvisorContext)
+    .replace("{detail_rule}", detailRule(settings));
 
   const res = await retryOnTransient(
     () =>

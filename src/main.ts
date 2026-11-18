@@ -15,6 +15,7 @@ import { analyzeWithClaude } from "./analysis/claude-analyze.js";
 import { analyzeTrends } from "./analysis/analyze.js";
 import { buildFallbackAnalysis } from "./analysis/fallback.js";
 import { postToLine } from "./delivery/line.js";
+import { writeReaderData } from "./delivery/reader.js";
 import { UserFacingError } from "./utils/errors.js";
 import type { Analysis } from "./analysis/schema.js";
 import type { RawTweet } from "./types.js";
@@ -42,8 +43,10 @@ async function main() {
     ? await analyzeWithClaudeOrSimple(tweets, urlContents, config)
     : await analyzeWithGemini(tweets, urlContents, config);
 
+  await writeReaderData(analysis, settings);
+
   console.info("[4/4] LINE へ投稿中...");
-  await postToLine(analysis, config);
+  await postToLine(analysis, config, settings.reader.url);
 
   console.info("すべての処理が完了しました");
 }
