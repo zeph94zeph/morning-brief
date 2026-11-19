@@ -90,6 +90,8 @@ const segs = [];         // { el, text }
 let current = 0;
 let playing = false;
 let voice = null;
+// brief.mp3 があれば普通の音声として再生する（画面を消しても止まらない）
+let audio = null;
 
 const $ = (id) => document.getElementById(id);
 const rateInput = $("rate");
@@ -121,7 +123,7 @@ function addSeg(container, title, details = [], sources = [], spoken = "") {
   el.querySelector(".d").textContent = details.join(" ");
   el.querySelector(".s").textContent = sources.length ? `出典：${sources.join("、")}` : "";
   const index = segs.length;
-  el.addEventListener("click", () => { current = index; start(); });
+  el.addEventListener("click", () => { if (!audio) { current = index; start(); } });
   container.appendChild(el);
   segs.push({ el, text: spoken + [title, ...details].join("。") });
 }
@@ -158,6 +160,41 @@ function render(data) {
   }
 }
 
+function setupAudio(data) {
+  if (!data.audio) return;
+  audio = new Audio(`${data.audio}?v=${encodeURIComponent(data.generatedAt)}`);
+  audio.preload = "metadata";
+  audio.playbackRate = Number(rateInput.value);
+  audio.addEventListener("ended", () => setPlaying(false));
+  audio.addEventListener("pause", () => setPlaying(false));
+  audio.addEventListener("play", () => setPlaying(true));
+  $("note").hidden = true;  // 音声ファイルなら LINE 内ブラウザでも再生できる
+  $("prev").setAttribute("aria-label", "15秒戻る");
+  $("next").setAttribute("aria-label", "15秒進む");
+
+  // ロック画面・通知の再生コントロール
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: `モーニングブリーフ ${$("date").textContent}`,
+      artist: "Morning Brief",
+    });
+    navigator.mediaSession.setActionHandler("play", () => audio.play());
+    navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+    navigator.mediaSession.setActionHandler("seekbackward", () => seek(-15));
+    navigator.mediaSession.setActionHandler("seekforward", () => seek(15));
+  }
+}
+
+function seek(sec) {
+  audio.currentTime = Math.max(0, Math.min(audio.duration || Infinity, audio.currentTime + sec));
+}
+
+function setPlaying(on) {
+  playing = on;
+  $("play").textContent = on ? "⏸" : "▶";
+  $("play").setAttribute("aria-label", on ? "一時停止" : "再生");
+}
+
 function highlight() {
   segs.forEach((s, i) => s.el.classList.toggle("now", i === current));
   segs[current]?.el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -191,14 +228,26 @@ function stop() {
   $("play").setAttribute("aria-label", "再生");
 }
 
-$("play").addEventListener("click", () => (playing ? stop() : start()));
-$("next").addEventListener("click", () => { current = Math.min(current + 1, segs.length - 1); playing ? start() : highlight(); });
-$("prev").addEventListener("click", () => { current = Math.max(current - 1, 0); playing ? start() : highlight(); });
+$("play").addEventListener("click", () => {
+  if (audio) return audio.paused ? audio.play() : audio.pause();
+  playing ? stop() : start();
+});
+$("next").addEventListener("click", () => {
+  if (audio) return seek(15);
+  current = Math.min(current + 1, segs.length - 1); playing ? start() : highlight();
+});
+$("prev").addEventListener("click", () => {
+  if (audio) return seek(-15);
+  current = Math.max(current - 1, 0); playing ? start() : highlight();
+});
 rateInput.addEventListener("input", () => {
   $("rateLabel").textContent = `${rateInput.value}x`;
   try { localStorage.setItem("rate", rateInput.value); } catch {}
 });
-rateInput.addEventListener("change", () => { if (playing) start(); });
+rateInput.addEventListener("change", () => {
+  if (audio) { audio.playbackRate = Number(rateInput.value); return; }
+  if (playing) start();
+});
 
 function showNoSpeech() {
   const note = $("note");
@@ -210,7 +259,7 @@ if (!canSpeak) showNoSpeech();
 
 fetch("brief.json", { cache: "no-store" })
   .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
-  .then(render)
+  .then((data) => { render(data); setupAudio(data); })
   .catch(() => {
     const status = $("status");
     if (status) status.textContent = "今日のブリーフを読み込めませんでした。時間をおいて開き直してください。";

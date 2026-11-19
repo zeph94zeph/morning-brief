@@ -58,7 +58,11 @@ const mockSettings: Settings = {
   },
   rss: { feeds: [] },
   brief: { detailsPerItem: 1, charsPerDetail: 100 },
-  reader: { url: "", outputDir: "site" },
+  reader: {
+    url: "",
+    outputDir: "site",
+    tts: { enabled: false, model: "tts", voice: "Kore", maxCharsPerRequest: 1500 },
+  },
   toolAdvisor: {
     enabled: false,
     maxRecommendations: 5,
