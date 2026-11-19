@@ -105,9 +105,17 @@ async function writeAudio(
     pcm.push(await synthesize(ai, chunk, tts.model, tts.voice));
   }
 
-  const file = "brief.mp3";
-  await encodeMp3(Buffer.concat(pcm), join(outputDir, file));
-  const seconds = Math.round(Buffer.concat(pcm).length / 2 / PCM_SAMPLE_RATE);
+  const all = Buffer.concat(pcm);
+  let file = "brief.mp3";
+  try {
+    await encodeMp3(all, join(outputDir, file));
+  } catch (error) {
+    // ffmpeg が無い・失敗したときは音声を捨てずに WAV で保存する（容量は大きいが再生はできる）
+    console.warn("[TTS] MP3 にできなかったため WAV で保存します。", error);
+    file = "brief.wav";
+    await writeFile(join(outputDir, file), toWav(all));
+  }
+  const seconds = Math.round(all.length / 2 / PCM_SAMPLE_RATE);
   console.info(`→ 音声ファイル ${file} を書き出しました（約${Math.floor(seconds / 60)}分${seconds % 60}秒）`);
   return file;
 }
@@ -144,7 +152,26 @@ async function synthesize(
   }
 }
 
-/** 生 PCM を ffmpeg で MP3 にする（GitHub Actions の ubuntu には ffmpeg が入っている） */
+/** 生 PCM（16bit・モノラル）に WAV ヘッダーを付ける */
+export function toWav(pcm: Buffer): Buffer {
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + pcm.length, 4);
+  header.write("WAVE", 8);
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16);               // fmt チャンクの大きさ
+  header.writeUInt16LE(1, 20);                // PCM
+  header.writeUInt16LE(1, 22);                // モノラル
+  header.writeUInt32LE(PCM_SAMPLE_RATE, 24);
+  header.writeUInt32LE(PCM_SAMPLE_RATE * 2, 28); // 1秒あたりのバイト数
+  header.writeUInt16LE(2, 32);                // 1サンプルのバイト数
+  header.writeUInt16LE(16, 34);               // ビット数
+  header.write("data", 36);
+  header.writeUInt32LE(pcm.length, 40);
+  return Buffer.concat([header, pcm]);
+}
+
+/** 生 PCM を ffmpeg で MP3 にする（ワークフローが事前に ffmpeg を入れる） */
 function encodeMp3(pcm: Buffer, outPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const ff = spawn("ffmpeg", [

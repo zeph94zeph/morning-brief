@@ -74,6 +74,26 @@ describe("writeReaderData", () => {
     expect(call.config.responseModalities).toEqual(["AUDIO"]);
   });
 
+  it("ffmpeg が無いときは WAV で保存する", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockGenerate.mockResolvedValue(audioResponse);
+    const dir = await mkdtemp(join(tmpdir(), "reader-"));
+    const path = process.env.PATH;
+    process.env.PATH = "";  // ffmpeg を見つけられない状態（本番の初回と同じ）
+    try {
+      await writeReaderData(analysis, await settingsIn(dir), "key");
+    } finally {
+      process.env.PATH = path;
+    }
+
+    const json = JSON.parse(await readFile(join(dir, "brief.json"), "utf8"));
+    expect(json.audio).toBe("brief.wav");
+    const wav = await readFile(join(dir, "brief.wav"));
+    expect(wav.subarray(0, 4).toString()).toBe("RIFF");
+    expect(wav.length).toBe(44 + 24_000 * 2);
+    warn.mockRestore();
+  });
+
   it("音声づくりに失敗しても brief.json は書き出す（audio なし）", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     // 音声データなしで返ってきた場合（無料枠の制限やモデル側の不具合）
