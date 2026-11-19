@@ -80,6 +80,19 @@ export interface Settings {
     url: string;
     /** 当日分の brief.json を書き出すフォルダ（ワークフローがここをページとして公開する） */
     outputDir: string;
+    /**
+     * 要約を音声ファイル（MP3）にする。画面を消してもバックグラウンドで再生できる。
+     * 失敗してもページは端末の読み上げ機能で動き、配信は止まらない
+     */
+    tts: {
+      enabled: boolean;
+      /** Gemini の音声合成モデル（GEMINI_API_KEY を使う） */
+      model: string;
+      /** 声の種類（Gemini の既定の声の名前） */
+      voice: string;
+      /** 1回の音声合成に渡す最大文字数。長い文章は分けて作ってつなげる */
+      maxCharsPerRequest: number;
+    };
   };
 }
 
@@ -133,6 +146,12 @@ export const settings: Settings = {
     // openExternalBrowser=1 で LINE 内ブラウザではなく Chrome などで開く（LINE 内ブラウザは読み上げ不可）
     url: "https://zeph94zeph.github.io/morning-brief/?openExternalBrowser=1",
     outputDir: "site",
+    tts: {
+      enabled: true,
+      model: "gemini-2.5-flash-preview-tts",
+      voice: "Kore",
+      maxCharsPerRequest: 1500,
+    },
   },
   toolAdvisor: {
     enabled: true,

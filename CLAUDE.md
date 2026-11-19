@@ -31,7 +31,7 @@ src/
 │   └── prompts.ts       # プロンプト（Gemini 用2つ + Claude 用2つ）
 ├── delivery/
 │   ├── line.ts          # LINE Messaging API broadcast（現在の配信先。冒頭に読み上げページのリンク）
-│   ├── reader.ts        # 読み上げページ用の site/brief.json を書き出す
+│   ├── reader.ts        # 読み上げページ用の site/brief.json と brief.mp3（Gemini 音声合成）を書き出す
 │   └── slack.ts         # 旧Slack配信。現在どこからも呼ばれていない
 └── utils/
     ├── chunk.ts         # 配列チャンク分割
@@ -40,7 +40,9 @@ src/
 ```
 
 読み上げページ（`web/index.html`）は、ワークフローが `site/brief.json` と一緒に GitHub Pages
-（https://zeph94zeph.github.io/morning-brief/）へ公開する。端末内蔵の音声で読むので料金はかからない。
+（https://zeph94zeph.github.io/morning-brief/）へ公開する。要約は Gemini の音声合成で `brief.mp3` にし、
+ページは普通の音声として再生する（画面を消しても止まらない・ロック画面で操作できる）。
+音声づくりに失敗した日は、端末内蔵の読み上げ機能で代用する（こちらは画面を消すと止まる）。
 配信文の長さは `src/settings.ts` の `brief`、使うモデルは `claude.model` で変える。
 
 ## 実行方法

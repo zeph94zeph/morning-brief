@@ -43,7 +43,7 @@ async function main() {
     ? await analyzeWithClaudeOrSimple(tweets, urlContents, config)
     : await analyzeWithGemini(tweets, urlContents, config);
 
-  await writeReaderData(analysis, settings);
+  await writeReaderData(analysis, settings, config.GEMINI_API_KEY);
 
   console.info("[4/4] LINE へ投稿中...");
   await postToLine(analysis, config, settings.reader.url);
