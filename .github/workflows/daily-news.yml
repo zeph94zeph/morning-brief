@@ -62,6 +62,13 @@ jobs:
       - run: npm ci
         if: steps.guard.outputs.skip != 'true'
 
+      # 読み上げ音声を MP3 にするため（ubuntu-latest には ffmpeg が入っていない）。
+      # 入れられなくても配信は止めない（音声は WAV で保存される）
+      - name: ffmpeg を入れる
+        if: steps.guard.outputs.skip != 'true'
+        continue-on-error: true
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
+
       - run: npm start
         if: steps.guard.outputs.skip != 'true'
         env:
